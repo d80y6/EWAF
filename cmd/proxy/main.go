@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/sentinel-waf/sentinel-waf/internal/proxy"
+	"github.com/sentinel-waf/sentinel-waf/pkg/ebpf"
 	"github.com/sentinel-waf/sentinel-waf/pkg/engine"
 )
 
@@ -33,6 +34,16 @@ func main() {
 	}
 
 	p.StartRuleUpdater(cpURL)
+
+	// Initialize eBPF/XDP (Phase 3)
+	xdpManger := ebpf.NewXDPManager()
+	if iface := os.Getenv("XDP_INTERFACE"); iface != "" {
+		if err := xdpManger.Load(iface); err != nil {
+			log.Printf("Warning: failed to load XDP: %v", err)
+		} else {
+			defer xdpManger.Close()
+		}
+	}
 
 	log.Printf("Sentinel WAF Proxy listening on %s, forwarding to %s", listenAddr, targetURL)
 	if err := http.ListenAndServe(listenAddr, p); err != nil {

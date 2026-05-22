@@ -11,6 +11,7 @@ import (
 
 type Engine struct {
 	rules       []model.Rule
+	tenantRules map[uint][]model.Rule
 	mu          sync.RWMutex
 	regex       map[string]*regexp.Regexp
 	threatIntel *ThreatIntel
@@ -19,6 +20,7 @@ type Engine struct {
 func NewEngine() *Engine {
 	return &Engine{
 		rules:       make([]model.Rule, 0),
+		tenantRules: make(map[uint][]model.Rule),
 		regex:       make(map[string]*regexp.Regexp),
 		threatIntel: NewThreatIntel(),
 	}
