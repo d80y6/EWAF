@@ -1,0 +1,30 @@
+services:
+  proxy:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.proxy
+    ports:
+      - "80:80"
+    environment:
+      - TARGET_URL=http://echo:8080
+    depends_on:
+      - echo
+
+  control-plane:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.cp
+    ports:
+      - "8081:8081"
+
+  web:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.web
+    ports:
+      - "3000:3000"
+
+  echo:
+    image: ealen/echo-server
+    ports:
+      - "8080:80"

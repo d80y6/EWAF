@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package api;
+
+option go_package = "github.com/sentinel-waf/sentinel-waf/api";
+
+service ControlPlane {
+  rpc GetRules(GetRulesRequest) returns (GetRulesResponse);
+  rpc UpdateRule(UpdateRuleRequest) returns (UpdateRuleResponse);
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+}
+
+message Rule {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string action = 4;
+  int32 score = 5;
+}
+
+message GetRulesRequest {}
+message GetRulesResponse {
+  repeated Rule rules = 1;
+}
+
+message UpdateRuleRequest {
+  Rule rule = 1;
+}
+message UpdateRuleResponse {
+  bool success = 1;
+}
+
+message GetStatsRequest {}
+message GetStatsResponse {
+  int64 total_requests = 1;
+  int64 blocked_requests = 2;
+}
