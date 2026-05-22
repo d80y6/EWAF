@@ -21,13 +21,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081';
     const fetchData = async () => {
       try {
-        const statsResp = await fetch('http://localhost:8081/api/stats');
+        const statsResp = await fetch(`${apiUrl}/api/stats`);
         const statsData = await statsResp.json();
         setStats(prev => ({ ...prev, ...statsData }));
 
-        const rulesResp = await fetch('http://localhost:8081/api/rules');
+        const rulesResp = await fetch(`${apiUrl}/api/rules`);
         const rulesData = await rulesResp.json();
         setRules(rulesData);
       } catch (error) {

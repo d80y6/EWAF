@@ -50,6 +50,9 @@ func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) 
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
+	e.NormalizeRequest(req)
+	e.ParseBody(req)
+
 	shouldBlock := false
 
 	// Threat Intelligence Check
@@ -78,7 +81,7 @@ func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) 
 
 		if matched {
 			req.Score += rule.Score
-			req.MatchedRules = append(req.MatchedRules, rule.ID)
+			req.MatchedRules = append(req.MatchedRules, rule.RuleID)
 			if rule.Action == "block" {
 				shouldBlock = true
 			}

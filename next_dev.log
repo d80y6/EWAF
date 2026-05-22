@@ -1,0 +1,18 @@
+
+> web@0.1.0 dev
+> next dev
+
+ ⚠ Port 3000 is in use by an unknown process, using available port 3001 instead.
+   ▲ Next.js 15.5.18
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.0.2:3001
+
+ ✓ Starting...
+ ✓ Ready in 2.1s
+ ○ Compiling / ...
+ ✓ Compiled / in 1367ms (598 modules)
+ GET / 200 in 2320ms
+ GET / 200 in 140ms
+ GET / 200 in 106ms
+ GET / 200 in 1162ms
+ GET / 200 in 190ms

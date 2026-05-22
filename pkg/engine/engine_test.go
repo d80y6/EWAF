@@ -12,7 +12,7 @@ func TestEngine_InspectRequest(t *testing.T) {
 	e := NewEngine()
 	rules := []model.Rule{
 		{
-			ID:     "1",
+			RuleID: "1",
 			Name:   "SQL Injection detection",
 			Action: "block",
 			Score:  10,

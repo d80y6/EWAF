@@ -5,7 +5,7 @@ import "github.com/sentinel-waf/sentinel-waf/pkg/model"
 func GetDefaultRules() []model.Rule {
 	return []model.Rule{
 		{
-			ID:          "942100",
+			RuleID:      "942100",
 			Name:        "SQL Injection Attack Detected via libinjection",
 			Description: "Detects classic SQL injection attacks",
 			Severity:    "Critical",
@@ -21,7 +21,7 @@ func GetDefaultRules() []model.Rule {
 			},
 		},
 		{
-			ID:          "941100",
+			RuleID:      "941100",
 			Name:        "XSS Filter - Category 1",
 			Description: "Detects common XSS script tags",
 			Severity:    "Critical",
@@ -37,7 +37,7 @@ func GetDefaultRules() []model.Rule {
 			},
 		},
 		{
-			ID:          "930100",
+			RuleID:      "930100",
 			Name:        "Path Traversal Attack",
 			Description: "Detects path traversal attacks",
 			Severity:    "High",

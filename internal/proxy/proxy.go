@@ -15,21 +15,23 @@ import (
 )
 
 type Proxy struct {
-	target *url.URL
-	proxy  *httputil.ReverseProxy
-	engine *engine.Engine
+	target       *url.URL
+	proxy        *httputil.ReverseProxy
+	engine       *engine.Engine
+	controlPlane string
 }
 
-func NewProxy(targetURL string, e *engine.Engine) (*Proxy, error) {
+func NewProxy(targetURL string, e *engine.Engine, cpURL string) (*Proxy, error) {
 	target, err := url.Parse(targetURL)
 	if err != nil {
 		return nil, err
 	}
 
 	p := &Proxy{
-		target: target,
-		proxy:  httputil.NewSingleHostReverseProxy(target),
-		engine: e,
+		target:       target,
+		proxy:        httputil.NewSingleHostReverseProxy(target),
+		engine:       e,
+		controlPlane: cpURL,
 	}
 
 	return p, nil
@@ -60,7 +62,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// 2. Inspect request
 	_, blocked := p.engine.InspectRequest(context.Background(), reqCtx)
 
-	// API Security Check (example policy)
+	// API Security Check
 	apiBlocked := p.engine.InspectAPI(context.Background(), reqCtx, []model.APISecurityPolicy{
 		{
 			PathPrefix:    "/api/secure",
@@ -69,12 +71,8 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 
-	// API Security Violation detection for stats
-	apiViolation := apiBlocked
-
 	// 3. Report Stats
-	cpURL := "http://localhost:8081" // Should be configurable
-	go p.reportStats(cpURL, blocked || apiBlocked, reqCtx.Score > 10, apiViolation)
+	go p.reportStats(p.controlPlane, blocked || apiBlocked, reqCtx.Score > 10, apiBlocked)
 
 	if blocked || apiBlocked {
 		w.WriteHeader(http.StatusForbidden)
@@ -82,6 +80,6 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Forward to target
+	// 4. Forward to target
 	p.proxy.ServeHTTP(w, r)
 }

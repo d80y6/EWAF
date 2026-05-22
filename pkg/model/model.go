@@ -32,17 +32,6 @@ type ResponseContext struct {
 	Body    []byte
 }
 
-type Rule struct {
-	ID          string
-	Name        string
-	Description string
-	Severity    string
-	Category    string
-	Conditions  []Condition
-	Action      string // block, allow, monitor
-	Score       int
-}
-
 type Condition struct {
 	Operator string // regex, contains, eq, gt, lt
 	Target   string // url, body, headers, method, ip
@@ -58,12 +47,4 @@ type APISecurityPolicy struct {
 	JWTSecret         string
 	OpenAPIEnforcement bool
 	OpenAPISpec       string // URL or raw spec
-}
-
-type Tenant struct {
-	ID        string
-	Name      string
-	APIKey    string
-	Policies  []Rule
-	IsActive  bool
 }

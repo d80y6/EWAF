@@ -22,15 +22,16 @@ func main() {
 
 	wafEngine := engine.NewEngine()
 
-	p, err := proxy.NewProxy(targetURL, wafEngine)
-	if err != nil {
-		log.Fatalf("Failed to create proxy: %v", err)
-	}
-
 	cpURL := os.Getenv("CONTROL_PLANE_URL")
 	if cpURL == "" {
 		cpURL = "http://localhost:8081"
 	}
+
+	p, err := proxy.NewProxy(targetURL, wafEngine, cpURL)
+	if err != nil {
+		log.Fatalf("Failed to create proxy: %v", err)
+	}
+
 	p.StartRuleUpdater(cpURL)
 
 	log.Printf("Sentinel WAF Proxy listening on %s, forwarding to %s", listenAddr, targetURL)
