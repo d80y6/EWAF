@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Shield, AlertTriangle, Activity, Settings, List, BarChart3, Globe, Users } from 'lucide-react';
+import { Shield, AlertTriangle, Activity, Settings, List, BarChart3, Globe, Users, Cpu, BrainCircuit } from 'lucide-react';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -13,6 +13,8 @@ export default function Dashboard() {
     apiViolations: 0,
     maliciousIPs: 1240,
     activeTenants: 12,
+    aiRules: 4,
+    wasmPlugins: 2,
   });
 
   const [rules, setRules] = useState([]);
@@ -23,7 +25,7 @@ export default function Dashboard() {
       try {
         const statsResp = await fetch('http://localhost:8081/api/stats');
         const statsData = await statsResp.json();
-        setStats(statsData);
+        setStats(prev => ({ ...prev, ...statsData }));
 
         const rulesResp = await fetch('http://localhost:8081/api/rules');
         const rulesData = await rulesResp.json();
@@ -55,7 +57,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+      <main className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-6 mb-12">
         <StatCard
           title="Total Requests"
           value={stats.totalRequests.toLocaleString()}
@@ -86,6 +88,16 @@ export default function Dashboard() {
           title="Active Tenants"
           value={stats.activeTenants.toLocaleString()}
           icon={<Users className="w-5 h-5 text-blue-400" />}
+        />
+        <StatCard
+          title="AI Rules"
+          value={stats.aiRules.toLocaleString()}
+          icon={<BrainCircuit className="w-5 h-5 text-fuchsia-400" />}
+        />
+        <StatCard
+          title="WASM Plugins"
+          value={stats.wasmPlugins.toLocaleString()}
+          icon={<Cpu className="w-5 h-5 text-cyan-400" />}
         />
       </main>
 
