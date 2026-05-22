@@ -8,6 +8,8 @@ export default function Dashboard() {
     totalRequests: 0,
     blockedRequests: 0,
     threatLevel: 'Unknown',
+    mlAnomalies: 0,
+    apiViolations: 0,
   });
 
   const [rules, setRules] = useState([]);
@@ -50,25 +52,27 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <main className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
         <StatCard
           title="Total Requests"
           value={stats.totalRequests.toLocaleString()}
           icon={<Activity className="w-5 h-5 text-indigo-400" />}
-          trend="+12% from last hour"
         />
         <StatCard
           title="Blocked Requests"
           value={stats.blockedRequests.toLocaleString()}
           icon={<AlertTriangle className="w-5 h-5 text-rose-400" />}
-          trend="+5% from last hour"
           critical
         />
         <StatCard
-          title="Threat Level"
-          value={stats.threatLevel}
-          icon={<Shield className="w-5 h-5 text-emerald-400" />}
-          trend="Stable"
+          title="ML Anomalies"
+          value={stats.mlAnomalies.toLocaleString()}
+          icon={<BarChart3 className="w-5 h-5 text-amber-400" />}
+        />
+        <StatCard
+          title="API Violations"
+          value={stats.apiViolations.toLocaleString()}
+          icon={<List className="w-5 h-5 text-violet-400" />}
         />
       </main>
 

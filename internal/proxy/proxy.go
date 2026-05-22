@@ -35,9 +35,15 @@ func NewProxy(targetURL string, e *engine.Engine) (*Proxy, error) {
 	return p, nil
 }
 
+const MaxBodySize = 10 * 1024 * 1024 // 10MB limit
+
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// 1. Capture request context
-	body, _ := io.ReadAll(r.Body)
+	body, err := io.ReadAll(io.LimitReader(r.Body, MaxBodySize))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	r.Body = io.NopCloser(bytes.NewBuffer(body))
 
 	reqCtx := &model.RequestContext{
@@ -54,7 +60,16 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// 2. Inspect request
 	_, blocked := p.engine.InspectRequest(context.Background(), reqCtx)
 
-	if blocked {
+	// API Security Check (example policy)
+	apiBlocked := p.engine.InspectAPI(context.Background(), reqCtx, []model.APISecurityPolicy{
+		{
+			PathPrefix:    "/api/secure",
+			JWTVaildation: true,
+			JWTSecret:     "super-secret",
+		},
+	})
+
+	if blocked || apiBlocked {
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("Request blocked by Sentinel WAF"))
 		return

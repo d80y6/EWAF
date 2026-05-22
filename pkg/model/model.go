@@ -50,3 +50,12 @@ type Condition struct {
 	Value    string // the value to compare against
 	Negate   bool
 }
+
+type APISecurityPolicy struct {
+	ID                string
+	PathPrefix        string
+	JWTVaildation     bool
+	JWTSecret         string
+	OpenAPIEnforcement bool
+	OpenAPISpec       string // URL or raw spec
+}

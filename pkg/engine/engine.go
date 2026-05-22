@@ -49,6 +49,15 @@ func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) 
 	defer e.mu.RUnlock()
 
 	shouldBlock := false
+
+	// ML Anomaly Detection
+	if e.DetectAnomaly(req) {
+		// DetectAnomaly updates score and matched rules
+		if req.Score > 20 {
+			shouldBlock = true
+		}
+	}
+
 	for _, rule := range e.rules {
 		matched := true
 		for _, cond := range rule.Conditions {

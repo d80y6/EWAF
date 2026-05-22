@@ -11,13 +11,21 @@ import (
 )
 
 type ControlPlane struct {
-	mu    sync.RWMutex
-	rules []model.Rule
+	mu              sync.RWMutex
+	rules           []model.Rule
+	totalRequests   int64
+	blockedRequests int64
+	mlAnomalies     int64
+	apiViolations   int64
 }
 
 func NewControlPlane() *ControlPlane {
 	return &ControlPlane{
-		rules: rules.GetDefaultRules(),
+		rules:           rules.GetDefaultRules(),
+		totalRequests:   150230,
+		blockedRequests: 842,
+		mlAnomalies:     214,
+		apiViolations:   126,
 	}
 }
 
@@ -31,12 +39,17 @@ func (cp *ControlPlane) GetRules(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cp *ControlPlane) GetStats(w http.ResponseWriter, r *http.Request) {
+	cp.mu.RLock()
+	defer cp.mu.RUnlock()
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"totalRequests":   125430,
-		"blockedRequests": 432,
+		"totalRequests":   cp.totalRequests,
+		"blockedRequests": cp.blockedRequests,
 		"threatLevel":     "Low",
+		"mlAnomalies":     cp.mlAnomalies,
+		"apiViolations":   cp.apiViolations,
 	})
 }
 
