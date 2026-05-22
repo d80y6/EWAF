@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Shield, AlertTriangle, Activity, Settings, List, BarChart3 } from 'lucide-react';
+import { Shield, AlertTriangle, Activity, Settings, List, BarChart3, Globe, Users } from 'lucide-react';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -10,6 +11,8 @@ export default function Dashboard() {
     threatLevel: 'Unknown',
     mlAnomalies: 0,
     apiViolations: 0,
+    maliciousIPs: 1240,
+    activeTenants: 12,
   });
 
   const [rules, setRules] = useState([]);
@@ -74,6 +77,16 @@ export default function Dashboard() {
           value={stats.apiViolations.toLocaleString()}
           icon={<List className="w-5 h-5 text-violet-400" />}
         />
+        <StatCard
+          title="Malicious IPs"
+          value={stats.maliciousIPs.toLocaleString()}
+          icon={<Globe className="w-5 h-5 text-rose-400" />}
+        />
+        <StatCard
+          title="Active Tenants"
+          value={stats.activeTenants.toLocaleString()}
+          icon={<Users className="w-5 h-5 text-blue-400" />}
+        />
       </main>
 
       <section className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
@@ -137,7 +150,7 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ title, value, icon, trend, critical = false }: any) {
+function StatCard({ title, value, icon, critical = false }: any) {
   return (
     <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-xl">
       <div className="flex items-center justify-between mb-4">
@@ -148,9 +161,6 @@ function StatCard({ title, value, icon, trend, critical = false }: any) {
       </div>
       <div className={`text-4xl font-bold mb-2 ${critical ? 'text-rose-500' : 'text-white'}`}>
         {value}
-      </div>
-      <div className="text-sm text-slate-500">
-        {trend}
       </div>
     </div>
   );

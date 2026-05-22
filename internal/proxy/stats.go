@@ -3,23 +3,16 @@ package proxy
 import (
 	"bytes"
 	"encoding/json"
-	"log"
 	"net/http"
-	"time"
-
-	"github.com/sentinel-waf/sentinel-waf/pkg/model"
 )
 
-func (p *Proxy) StartStatsReporter(controlPlaneURL string) {
-	ticker := time.NewTicker(10 * time.Second)
-	go func() {
-		for range ticker.C {
-			p.reportStats(controlPlaneURL)
-		}
-	}()
-}
 
-func (p *Proxy) reportStats(url string) {
-	// For now, proxy reports its own local stats to CP
-	// In a real distributed system, this would be more complex
+func (p *Proxy) reportStats(url string, blocked, anomaly, apiViolation bool) {
+	data := map[string]bool{
+		"blocked":      blocked,
+		"anomaly":      anomaly,
+		"apiViolation": apiViolation,
+	}
+	body, _ := json.Marshal(data)
+	http.Post(url+"/api/stats/report", "application/json", bytes.NewBuffer(body))
 }

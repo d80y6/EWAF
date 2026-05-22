@@ -10,15 +10,17 @@ import (
 )
 
 type Engine struct {
-	rules  []model.Rule
-	mu     sync.RWMutex
-	regex  map[string]*regexp.Regexp
+	rules       []model.Rule
+	mu          sync.RWMutex
+	regex       map[string]*regexp.Regexp
+	threatIntel *ThreatIntel
 }
 
 func NewEngine() *Engine {
 	return &Engine{
-		rules: make([]model.Rule, 0),
-		regex: make(map[string]*regexp.Regexp),
+		rules:       make([]model.Rule, 0),
+		regex:       make(map[string]*regexp.Regexp),
+		threatIntel: NewThreatIntel(),
 	}
 }
 
@@ -49,6 +51,13 @@ func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) 
 	defer e.mu.RUnlock()
 
 	shouldBlock := false
+
+	// Threat Intelligence Check
+	if e.threatIntel.IsMalicious(req.RemoteAddr) {
+		req.Score += 100
+		req.MatchedRules = append(req.MatchedRules, "THREAT_INTEL_MALICIOUS_IP")
+		return req, true
+	}
 
 	// ML Anomaly Detection
 	if e.DetectAnomaly(req) {

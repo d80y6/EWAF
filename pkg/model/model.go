@@ -59,3 +59,11 @@ type APISecurityPolicy struct {
 	OpenAPIEnforcement bool
 	OpenAPISpec       string // URL or raw spec
 }
+
+type Tenant struct {
+	ID        string
+	Name      string
+	APIKey    string
+	Policies  []Rule
+	IsActive  bool
+}

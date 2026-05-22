@@ -69,6 +69,13 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 
+	// API Security Violation detection for stats
+	apiViolation := apiBlocked
+
+	// 3. Report Stats
+	cpURL := "http://localhost:8081" // Should be configurable
+	go p.reportStats(cpURL, blocked || apiBlocked, reqCtx.Score > 10, apiViolation)
+
 	if blocked || apiBlocked {
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("Request blocked by Sentinel WAF"))
