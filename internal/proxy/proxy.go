@@ -71,8 +71,11 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 
+	// Real-time Anomaly Detection (Phase 2)
+	isAnomaly := p.engine.DetectAnomaly(reqCtx)
+
 	// 3. Report Stats
-	go p.reportStats(p.controlPlane, blocked || apiBlocked, reqCtx.Score > 10, apiBlocked)
+	go p.reportStats(p.controlPlane, blocked || apiBlocked, isAnomaly, apiBlocked)
 
 	if blocked || apiBlocked {
 		w.WriteHeader(http.StatusForbidden)
