@@ -97,7 +97,7 @@ func (e *Engine) evaluateCondition(cond model.Condition, req *model.RequestConte
 	var targetValue string
 	switch cond.Target {
 	case "url":
-		targetValue = req.URL
+		targetValue = req.NormalizedURL
 	case "method":
 		targetValue = req.Method
 	case "body":

@@ -4,22 +4,20 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sync/atomic"
 
 	"github.com/sentinel-waf/sentinel-waf/pkg/model"
 	"github.com/sentinel-waf/sentinel-waf/pkg/rules"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"encoding/json"
+	"strings"
+	"time"
 )
 
 type ControlPlane struct {
-	db              *gorm.DB
-	totalRequests   int64
-	blockedRequests int64
-	mlAnomalies     int64
-	apiViolations   int64
+	db *gorm.DB
 }
 
 func NewControlPlane(dsn string) (*ControlPlane, error) {
@@ -35,7 +33,7 @@ func NewControlPlane(dsn string) (*ControlPlane, error) {
 	}
 
 	// Auto-migrate
-	if err := db.AutoMigrate(&model.Tenant{}, &model.Rule{}); err != nil {
+	if err := db.AutoMigrate(&model.Tenant{}, &model.Rule{}, &model.SecurityEvent{}, &model.GlobalStats{}); err != nil {
 		return nil, err
 	}
 
@@ -64,14 +62,20 @@ func (cp *ControlPlane) GetRules(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cp *ControlPlane) GetStats(w http.ResponseWriter, r *http.Request) {
+	var total, blocked, anomaly, api int64
+	cp.db.Model(&model.GlobalStats{}).Where("key = ?", "total_requests").Select("value").Scan(&total)
+	cp.db.Model(&model.GlobalStats{}).Where("key = ?", "blocked_requests").Select("value").Scan(&blocked)
+	cp.db.Model(&model.GlobalStats{}).Where("key = ?", "ml_anomalies").Select("value").Scan(&anomaly)
+	cp.db.Model(&model.GlobalStats{}).Where("key = ?", "api_violations").Select("value").Scan(&api)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"totalRequests":   atomic.LoadInt64(&cp.totalRequests),
-		"blockedRequests": atomic.LoadInt64(&cp.blockedRequests),
+		"totalRequests":   total,
+		"blockedRequests": blocked,
 		"threatLevel":     "Low",
-		"mlAnomalies":     atomic.LoadInt64(&cp.mlAnomalies),
-		"apiViolations":   atomic.LoadInt64(&cp.apiViolations),
+		"mlAnomalies":     anomaly,
+		"apiViolations":   api,
 		"maliciousIPs":    1240,
 		"activeTenants":   1,
 	})
@@ -79,24 +83,68 @@ func (cp *ControlPlane) GetStats(w http.ResponseWriter, r *http.Request) {
 
 func (cp *ControlPlane) PostStats(w http.ResponseWriter, r *http.Request) {
 	var s struct {
-		Blocked       bool `json:"blocked"`
-		Anomaly       bool `json:"anomaly"`
-		APIViolation  bool `json:"apiViolation"`
+		Blocked      bool     `json:"blocked"`
+		Anomaly      bool     `json:"anomaly"`
+		APIViolation bool     `json:"apiViolation"`
+		RequestID    string   `json:"requestID"`
+		RemoteAddr   string   `json:"remoteAddr"`
+		Method       string   `json:"method"`
+		URL          string   `json:"url"`
+		Score        int      `json:"score"`
+		MatchedRules []string `json:"matchedRules"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
 		return
 	}
 
-	atomic.AddInt64(&cp.totalRequests, 1)
+	cp.incrementStat("total_requests")
 	if s.Blocked {
-		atomic.AddInt64(&cp.blockedRequests, 1)
+		cp.incrementStat("blocked_requests")
 	}
 	if s.Anomaly {
-		atomic.AddInt64(&cp.mlAnomalies, 1)
+		cp.incrementStat("ml_anomalies")
 	}
 	if s.APIViolation {
-		atomic.AddInt64(&cp.apiViolations, 1)
+		cp.incrementStat("api_violations")
 	}
+
+	// Persist security event if blocked or anomaly
+	if s.Blocked || s.Anomaly || s.APIViolation {
+		event := model.SecurityEvent{
+			Timestamp:      time.Now(),
+			RequestID:      s.RequestID,
+			RemoteAddr:     s.RemoteAddr,
+			Method:         s.Method,
+			URL:            s.URL,
+			MatchedRules:   strings.Join(s.MatchedRules, ","),
+			Score:          s.Score,
+			IsAnomaly:      s.Anomaly,
+			IsAPIViolation: s.APIViolation,
+		}
+		cp.db.Create(&event)
+	}
+}
+
+func (cp *ControlPlane) incrementStat(key string) {
+	cp.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "key"}},
+		DoUpdates: clause.Assignments(map[string]interface{}{"value": gorm.Expr("value + ?", 1)}),
+	}).Create(&model.GlobalStats{Key: key, Value: 1})
+}
+
+func (cp *ControlPlane) GetAPIPolicies(w http.ResponseWriter, r *http.Request) {
+	// For now, return a default policy. In a full implementation, this would be from DB.
+	policies := []model.APISecurityPolicy{
+		{
+			ID:            "1",
+			PathPrefix:    "/api",
+			JWTVaildation: true,
+			JWTSecret:     "sentinel-default-secret",
+		},
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	json.NewEncoder(w).Encode(policies)
 }
 
 func main() {
@@ -111,6 +159,7 @@ func main() {
 	}
 
 	http.HandleFunc("/api/rules", cp.GetRules)
+	http.HandleFunc("/api/policies", cp.GetAPIPolicies)
 	http.HandleFunc("/api/stats", cp.GetStats)
 	http.HandleFunc("/api/stats/report", cp.PostStats)
 

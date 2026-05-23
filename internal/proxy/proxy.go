@@ -11,6 +11,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sentinel-waf/sentinel-waf/pkg/ebpf"
+	"sync"
+
 	"github.com/sentinel-waf/sentinel-waf/pkg/engine"
 	"github.com/sentinel-waf/sentinel-waf/pkg/model"
 )
@@ -21,6 +23,8 @@ type Proxy struct {
 	engine       *engine.Engine
 	controlPlane string
 	xdp          *ebpf.XDPManager
+	apiPolicies  []model.APISecurityPolicy
+	mu           sync.RWMutex
 }
 
 func NewProxy(targetURL string, e *engine.Engine, cpURL string, xdp *ebpf.XDPManager) (*Proxy, error) {
@@ -65,21 +69,17 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// 2. Inspect request
 	_, blocked := p.engine.InspectRequest(context.Background(), reqCtx)
 
-	// API Security Check - Use environment secret for production hardening
-	jwtSecret := "sentinel-default-secret"
-	apiBlocked := p.engine.InspectAPI(context.Background(), reqCtx, []model.APISecurityPolicy{
-		{
-			PathPrefix:    "/api/secure",
-			JWTVaildation: true,
-			JWTSecret:     jwtSecret,
-		},
-	})
+	// API Security Check - Using dynamic policies from control plane
+	p.mu.RLock()
+	policies := p.apiPolicies
+	p.mu.RUnlock()
+	apiBlocked := p.engine.InspectAPI(context.Background(), reqCtx, policies)
 
 	// Real-time Anomaly Detection (Phase 2)
 	isAnomaly := p.engine.DetectAnomaly(reqCtx)
 
 	// 3. Report Stats
-	go p.reportStats(p.controlPlane, blocked || apiBlocked, isAnomaly, apiBlocked)
+	go p.reportStats(p.controlPlane, blocked || apiBlocked, isAnomaly, apiBlocked, reqCtx)
 
 	if blocked || apiBlocked {
 		// Kernel-level mitigation: Block IP for subsequent requests if severity is high
