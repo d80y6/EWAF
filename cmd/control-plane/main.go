@@ -33,7 +33,7 @@ func NewControlPlane(dsn string) (*ControlPlane, error) {
 	}
 
 	// Auto-migrate
-	if err := db.AutoMigrate(&model.Tenant{}, &model.Rule{}, &model.SecurityEvent{}, &model.GlobalStats{}); err != nil {
+	if err := db.AutoMigrate(&model.Tenant{}, &model.Rule{}, &model.SecurityEvent{}, &model.GlobalStats{}, &model.APISecurityPolicyDB{}); err != nil {
 		return nil, err
 	}
 
@@ -62,23 +62,38 @@ func (cp *ControlPlane) GetRules(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cp *ControlPlane) GetStats(w http.ResponseWriter, r *http.Request) {
-	var total, blocked, anomaly, api int64
-	cp.db.Model(&model.GlobalStats{}).Where("key = ?", "total_requests").Select("value").Scan(&total)
-	cp.db.Model(&model.GlobalStats{}).Where("key = ?", "blocked_requests").Select("value").Scan(&blocked)
-	cp.db.Model(&model.GlobalStats{}).Where("key = ?", "ml_anomalies").Select("value").Scan(&anomaly)
-	cp.db.Model(&model.GlobalStats{}).Where("key = ?", "api_violations").Select("value").Scan(&api)
+	var stats []model.GlobalStats
+	if err := cp.db.Find(&stats).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	res := map[string]interface{}{
+		"totalRequests":   int64(0),
+		"blockedRequests": int64(0),
+		"threatLevel":     "Low",
+		"mlAnomalies":     int64(0),
+		"apiViolations":   int64(0),
+		"maliciousIPs":    1240,
+		"activeTenants":   1,
+	}
+
+	for _, s := range stats {
+		switch s.Key {
+		case "total_requests":
+			res["totalRequests"] = s.Value
+		case "blocked_requests":
+			res["blockedRequests"] = s.Value
+		case "ml_anomalies":
+			res["mlAnomalies"] = s.Value
+		case "api_violations":
+			res["apiViolations"] = s.Value
+		}
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"totalRequests":   total,
-		"blockedRequests": blocked,
-		"threatLevel":     "Low",
-		"mlAnomalies":     anomaly,
-		"apiViolations":   api,
-		"maliciousIPs":    1240,
-		"activeTenants":   1,
-	})
+	json.NewEncoder(w).Encode(res)
 }
 
 func (cp *ControlPlane) PostStats(w http.ResponseWriter, r *http.Request) {
@@ -94,6 +109,7 @@ func (cp *ControlPlane) PostStats(w http.ResponseWriter, r *http.Request) {
 		MatchedRules []string `json:"matchedRules"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
@@ -126,22 +142,39 @@ func (cp *ControlPlane) PostStats(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cp *ControlPlane) incrementStat(key string) {
-	cp.db.Clauses(clause.OnConflict{
+	err := cp.db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "key"}},
 		DoUpdates: clause.Assignments(map[string]interface{}{"value": gorm.Expr("value + ?", 1)}),
-	}).Create(&model.GlobalStats{Key: key, Value: 1})
+	}).Create(&model.GlobalStats{Key: key, Value: 1}).Error
+	if err != nil {
+		log.Printf("Error incrementing stat %s: %v", key, err)
+	}
 }
 
 func (cp *ControlPlane) GetAPIPolicies(w http.ResponseWriter, r *http.Request) {
-	// For now, return a default policy. In a full implementation, this would be from DB.
-	policies := []model.APISecurityPolicy{
-		{
-			ID:            "1",
-			PathPrefix:    "/api",
-			JWTVaildation: true,
-			JWTSecret:     "sentinel-default-secret",
-		},
+	var policiesDB []model.APISecurityPolicyDB
+	if err := cp.db.Find(&policiesDB).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+
+	policies := make([]model.APISecurityPolicy, len(policiesDB))
+	for i, p := range policiesDB {
+		policies[i] = p.ToModel()
+	}
+
+	// Fallback to default if none configured
+	if len(policies) == 0 {
+		policies = []model.APISecurityPolicy{
+			{
+				ID:            "1",
+				PathPrefix:    "/api",
+				JWTVaildation: true,
+				JWTSecret:     "sentinel-default-secret",
+			},
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	json.NewEncoder(w).Encode(policies)

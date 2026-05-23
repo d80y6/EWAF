@@ -12,8 +12,10 @@ func (e *Engine) NormalizeRequest(req *model.RequestContext) {
 	// Unicode normalization (simplified)
 	req.NormalizedURL = strings.ToLower(req.URL)
 
-	// Path normalization
-	req.NormalizedURL = strings.ReplaceAll(req.NormalizedURL, "//", "/")
+	// Path normalization: collapse multiple slashes recursively
+	for strings.Contains(req.NormalizedURL, "//") {
+		req.NormalizedURL = strings.ReplaceAll(req.NormalizedURL, "//", "/")
+	}
 }
 
 func (e *Engine) ParseBody(req *model.RequestContext) {
