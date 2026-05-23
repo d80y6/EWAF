@@ -34,15 +34,24 @@ type Tenant struct {
 }
 
 type SecurityEvent struct {
+	gorm.Model
 	Timestamp      time.Time
-	RequestID      string
-	TenantID       string
-	RemoteAddr     string
-	Method         string
-	URL            string
-	MatchedRules   []string
+	RequestID      string `gorm:"size:64"`
+	TenantID       string `gorm:"size:64"`
+	RemoteAddr     string `gorm:"size:64"`
+	Method         string `gorm:"size:10"`
+	URL            string `gorm:"type:text"`
+	MatchedRules   string `gorm:"type:text"` // Comma-separated or JSON
 	Score          int
-	Action         string
-	UserAgent      string
+	Action         string `gorm:"size:20"`
+	UserAgent      string `gorm:"type:text"`
 	MLAnomalyScore float64
+	IsAnomaly      bool
+	IsAPIViolation bool
+}
+
+type GlobalStats struct {
+	gorm.Model
+	Key   string `gorm:"uniqueIndex;size:64"`
+	Value int64
 }
