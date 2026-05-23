@@ -28,15 +28,15 @@ func main() {
 		cpURL = "http://localhost:8081"
 	}
 
-	p, err := proxy.NewProxy(targetURL, wafEngine, cpURL)
+	// Initialize eBPF/XDP (Phase 3)
+	xdpManger := ebpf.NewXDPManager()
+
+	p, err := proxy.NewProxy(targetURL, wafEngine, cpURL, xdpManger)
 	if err != nil {
 		log.Fatalf("Failed to create proxy: %v", err)
 	}
 
 	p.StartRuleUpdater(cpURL)
-
-	// Initialize eBPF/XDP (Phase 3)
-	xdpManger := ebpf.NewXDPManager()
 	if iface := os.Getenv("XDP_INTERFACE"); iface != "" {
 		if err := xdpManger.Load(iface); err != nil {
 			log.Printf("Warning: failed to load XDP: %v", err)

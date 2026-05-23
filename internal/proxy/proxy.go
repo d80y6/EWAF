@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sentinel-waf/sentinel-waf/pkg/ebpf"
 	"github.com/sentinel-waf/sentinel-waf/pkg/engine"
 	"github.com/sentinel-waf/sentinel-waf/pkg/model"
 )
@@ -19,9 +20,10 @@ type Proxy struct {
 	proxy        *httputil.ReverseProxy
 	engine       *engine.Engine
 	controlPlane string
+	xdp          *ebpf.XDPManager
 }
 
-func NewProxy(targetURL string, e *engine.Engine, cpURL string) (*Proxy, error) {
+func NewProxy(targetURL string, e *engine.Engine, cpURL string, xdp *ebpf.XDPManager) (*Proxy, error) {
 	target, err := url.Parse(targetURL)
 	if err != nil {
 		return nil, err
@@ -32,6 +34,7 @@ func NewProxy(targetURL string, e *engine.Engine, cpURL string) (*Proxy, error) 
 		proxy:        httputil.NewSingleHostReverseProxy(target),
 		engine:       e,
 		controlPlane: cpURL,
+		xdp:          xdp,
 	}
 
 	return p, nil
@@ -79,6 +82,10 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	go p.reportStats(p.controlPlane, blocked || apiBlocked, isAnomaly, apiBlocked)
 
 	if blocked || apiBlocked {
+		// Kernel-level mitigation: Block IP for subsequent requests if severity is high
+		if reqCtx.Score > 50 && p.xdp != nil {
+			p.xdp.BlockIP(reqCtx.RemoteAddr)
+		}
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("Request blocked by Sentinel WAF"))
 		return

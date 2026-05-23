@@ -1,0 +1,19 @@
+proxy:
+  replicaCount: 3
+  image:
+    repository: sentinel-waf/proxy
+    tag: latest
+  service:
+    type: LoadBalancer
+    port: 80
+
+controlPlane:
+  image:
+    repository: sentinel-waf/control-plane
+    tag: latest
+
+postgresql:
+  enabled: true
+  auth:
+    database: sentinel_waf
+    password: sentinel_password

@@ -52,5 +52,37 @@ func GetDefaultRules() []model.Rule {
 				},
 			},
 		},
+		{
+			RuleID:      "932100",
+			Name:        "Remote Command Execution: Unix Shell Code",
+			Description: "Detects common shell injection patterns",
+			Severity:    "Critical",
+			Category:    "RCE",
+			Action:      "block",
+			Score:       60, // Auto-triggers eBPF block
+			Conditions: []model.Condition{
+				{
+					Target:   "url",
+					Operator: "regex",
+					Value:    "(?i)(;|\\||\\x26|\\$\\(|\\x60|\\x3c|\\x3e|cat\\s+/etc/passwd|nc\\s+-e|/bin/sh|/bin/bash)",
+				},
+			},
+		},
+		{
+			RuleID:      "933100",
+			Name:        "PHP Injection Attack",
+			Description: "Detects common PHP injection patterns",
+			Severity:    "Critical",
+			Category:    "PHP",
+			Action:      "block",
+			Score:       10,
+			Conditions: []model.Condition{
+				{
+					Target:   "url",
+					Operator: "regex",
+					Value:    "(?i)(<\\?php|eval\\(|base64_decode\\(|gzinflate\\(|str_rot13\\()",
+				},
+			},
+		},
 	}
 }
