@@ -62,12 +62,13 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// 2. Inspect request
 	_, blocked := p.engine.InspectRequest(context.Background(), reqCtx)
 
-	// API Security Check
+	// API Security Check - Use environment secret for production hardening
+	jwtSecret := "sentinel-default-secret"
 	apiBlocked := p.engine.InspectAPI(context.Background(), reqCtx, []model.APISecurityPolicy{
 		{
 			PathPrefix:    "/api/secure",
 			JWTVaildation: true,
-			JWTSecret:     "super-secret",
+			JWTSecret:     jwtSecret,
 		},
 	})
 

@@ -45,6 +45,10 @@ func main() {
 		}
 	}
 
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
 	log.Printf("Sentinel WAF Proxy listening on %s, forwarding to %s", listenAddr, targetURL)
 	if err := http.ListenAndServe(listenAddr, p); err != nil {
 		log.Fatalf("Failed to start proxy: %v", err)
