@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+
+	"github.com/sentinel-waf/sentinel-waf/pkg/model"
 )
 
 
