@@ -15,6 +15,8 @@ type Engine struct {
 	mu          sync.RWMutex
 	regex       map[string]*regexp.Regexp
 	threatIntel *ThreatIntel
+	graphql     *GraphQLAnalyzer
+	forest      *IsolationForest
 }
 
 func NewEngine() *Engine {
@@ -23,6 +25,8 @@ func NewEngine() *Engine {
 		tenantRules: make(map[uint][]model.Rule),
 		regex:       make(map[string]*regexp.Regexp),
 		threatIntel: NewThreatIntel(),
+		graphql:     &GraphQLAnalyzer{MaxDepth: 10, MaxComplexity: 100},
+		forest:      &IsolationForest{Trees: make([]*Tree, 0)},
 	}
 }
 
@@ -49,6 +53,11 @@ func (e *Engine) LoadRules(rules []model.Rule) error {
 }
 
 func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) (*model.RequestContext, bool) {
+	// 1. Global Allow-list for system paths
+	if strings.HasSuffix(req.URL, "/health") || strings.HasSuffix(req.URL, "/metrics") || strings.HasSuffix(req.URL, "/favicon.ico") {
+		return req, false
+	}
+
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -69,6 +78,19 @@ func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) 
 		// DetectAnomaly updates score and matched rules
 		if req.Score > 20 {
 			shouldBlock = true
+		}
+	}
+
+	// GraphQL Analysis
+	if strings.Contains(req.Headers.Get("Content-Type"), "application/json") &&
+	   (strings.Contains(req.NormalizedBody, "query") || strings.Contains(req.NormalizedBody, "mutation")) {
+		depth, complexity, err := e.graphql.Analyze(req.NormalizedBody)
+		if err == nil {
+			if depth > e.graphql.MaxDepth || complexity > e.graphql.MaxComplexity {
+				req.Score += 30
+				req.MatchedRules = append(req.MatchedRules, "GRAPHQL_LIMIT_EXCEEDED")
+				shouldBlock = true
+			}
 		}
 	}
 

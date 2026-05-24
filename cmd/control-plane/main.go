@@ -170,7 +170,7 @@ func (cp *ControlPlane) GetAPIPolicies(w http.ResponseWriter, r *http.Request) {
 				ID:            "1",
 				PathPrefix:    "/api",
 				JWTVaildation: true,
-				JWTSecret:     "sentinel-default-secret",
+				JWTSecret:     "s3ntinel-p0d-pr0ducti0n-s3cr3t-2025!",
 			},
 		}
 	}

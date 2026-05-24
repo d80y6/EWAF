@@ -43,12 +43,20 @@ func (m *XDPManager) Load(ifaceName string) error {
 }
 
 func (m *XDPManager) BlockIP(ipStr string) error {
-	ip := net.ParseIP(ipStr).To4()
+	ip := net.ParseIP(ipStr)
 	if ip == nil {
 		return nil
 	}
 
-	key := uint32(ip[0]) | uint32(ip[1])<<8 | uint32(ip[2])<<16 | uint32(ip[3])<<24
+	var key [16]byte
+	if ip4 := ip.To4(); ip4 != nil {
+		// IPv4-mapped IPv6
+		copy(key[10:12], []byte{0xff, 0xff})
+		copy(key[12:16], ip4)
+	} else {
+		copy(key[:], ip.To16())
+	}
+
 	value := uint32(1)
 	return m.objs.BlockList.Update(key, value, 0)
 }

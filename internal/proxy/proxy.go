@@ -47,7 +47,9 @@ func NewProxy(targetURL string, e *engine.Engine, cpURL string, xdp *ebpf.XDPMan
 const MaxBodySize = 10 * 1024 * 1024 // 10MB limit
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// 1. Capture request context
+	// 1. Capture request context with memory-efficient limit
+	// Still need the body for inspection, but we ensure it's limited
+	// and we could potentially use a sync.Pool for buffers in a higher-load scenario.
 	body, err := io.ReadAll(io.LimitReader(r.Body, MaxBodySize))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
