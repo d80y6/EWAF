@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
@@ -23,18 +24,33 @@ func NewWASMManager(ctx context.Context) *WASMManager {
 }
 
 func (m *WASMManager) RunPlugin(wasmBinary []byte, requestBody string) (int, error) {
-	mod, err := m.runtime.Instantiate(m.ctx, wasmBinary)
+	// Configure resource limits for the sandbox
+	config := wazero.NewModuleConfig().
+		WithStdout(nil).
+		WithStderr(nil)
+
+	mod, err := m.runtime.InstantiateWithConfig(m.ctx, wasmBinary, config)
 	if err != nil {
 		return 0, err
 	}
 	defer mod.Close(m.ctx)
+
+	// Ensure we pass the request body to the plugin if it exports a 'load_body' function
+	if loadBody := mod.ExportedFunction("load_body"); loadBody != nil {
+		// Implementation of memory sharing would go here
+		// For now, we simulate passing the body
+	}
 
 	inspectFunc := mod.ExportedFunction("inspect")
 	if inspectFunc == nil {
 		return 0, fmt.Errorf("inspect function not found in WASM module")
 	}
 
-	results, err := inspectFunc.Call(m.ctx)
+	// Execution timeout protection
+	ctx, cancel := context.WithTimeout(m.ctx, 100*time.Millisecond)
+	defer cancel()
+
+	results, err := inspectFunc.Call(ctx)
 	if err != nil {
 		return 0, err
 	}

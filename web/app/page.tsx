@@ -11,10 +11,10 @@ export default function Dashboard() {
     threatLevel: 'Unknown',
     mlAnomalies: 0,
     apiViolations: 0,
-    maliciousIPs: 1240,
-    activeTenants: 12,
-    aiRules: 4,
-    wasmPlugins: 2,
+    maliciousIPs: 0,
+    activeTenants: 0,
+    aiRules: 0,
+    wasmPlugins: 0,
   });
 
   const [rules, setRules] = useState([]);

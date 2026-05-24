@@ -68,14 +68,25 @@ func (cp *ControlPlane) GetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var activeTenants int64
+	cp.db.Model(&model.Tenant{}).Where("is_active = ?", true).Count(&activeTenants)
+
+	var maliciousIPs int64
+	cp.db.Model(&model.SecurityEvent{}).Distinct("remote_addr").Count(&maliciousIPs)
+
+	var aiRules int64
+	cp.db.Model(&model.Rule{}).Where("rule_id LIKE ?", "AI_%").Count(&aiRules)
+
 	res := map[string]interface{}{
 		"totalRequests":   int64(0),
 		"blockedRequests": int64(0),
 		"threatLevel":     "Low",
 		"mlAnomalies":     int64(0),
 		"apiViolations":   int64(0),
-		"maliciousIPs":    1240,
-		"activeTenants":   1,
+		"maliciousIPs":    maliciousIPs,
+		"activeTenants":   activeTenants,
+		"aiRules":         aiRules,
+		"wasmPlugins":     int64(0),
 	}
 
 	for _, s := range stats {
