@@ -1,23 +1,13 @@
-# Kubernetes Review - Sentinel WAF
+# Kubernetes & SRE Review - Sentinel WAF
 
-## Configuration Audit
+## 1. Deployment Risks
+- **Privilege Gap**: eBPF/XDP requires elevated privileges (`CAP_NET_ADMIN`) which are not present in `deployments/k8s/`.
+- **Resource Limits**: Inconsistent or missing resource limits for the Proxy, which is prone to OOM due to large body buffering.
+- **SQLite SPOF**: Default deployment uses SQLite inside a pod, meaning data loss on pod restart and no multi-pod scaling for the Control Plane.
 
-### 1. Missing Resource Limits
-- **Observation**: `deployments/k8s/proxy.yaml` does not define `resources.requests` or `resources.limits`.
-- **Risk**: In a WAF, which is CPU and memory intensive (especially with 10MB buffers), this can lead to "noisy neighbor" issues and node instability.
+## 2. Resiliency
+- **Fail-Open/Fail-Closed**: If the WAF engine panics, the proxy crashes (Fail-Closed/Outage).
+- **Control Plane Outage**: Proxy continues with cached rules but loses new updates and telemetry persistence.
 
-### 2. Lack of Health Probes
-- **Observation**: No `livenessProbe` or `readinessProbe` is defined.
-- **Risk**: Kubernetes will send traffic to pods even if the proxy is crashing or failing to connect to the Control Plane.
-
-### 3. Privileged Mode Required for XDP
-- **Observation**: The YAML does not include the necessary `securityContext` (e.g., `privileged: true` or `CAP_NET_ADMIN`) to load eBPF/XDP programs.
-- **Risk**: The XDP features will **fail to load** in standard Kubernetes deployments without manual intervention or manifest updates.
-
-### 4. Hardcoded Environment Variables
-- **Observation**: `TARGET_URL` is hardcoded. It should be configurable via ConfigMaps or Secrets.
-- **Risk**: Low flexibility and poor separation of configuration and code.
-
-### 5. Absence of Network Policies
-- **Observation**: No `NetworkPolicy` manifests are provided.
-- **Risk**: Any pod in the cluster can communicate with the Control Plane/Proxy, increasing the blast radius of a compromised pod.
+## 3. Scalability
+- **Horizontal Scaling**: Edge Proxy can scale but Control Plane (with SQLite) CANNOT.

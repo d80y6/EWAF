@@ -1,14 +1,11 @@
-# SRE Resiliency Report - Sentinel WAF
+# Model Evaluation Report - Sentinel WAF
 
-## Resiliency Matrix
+## 1. Evaluation Results
+| Model | Accuracy | F1 Score | Status |
+|-------|----------|----------|--------|
+| ONNX Anomaly | N/A | N/A | Not implemented |
+| Isolation Forest | N/A | N/A | Not trained |
+| Entropy Heuristic | 65% | 0.50 | High False Positives |
 
-| Component | Failure Mode | Impact | Recovery |
-|-----------|--------------|--------|----------|
-| **Control Plane** | Down | Proxy cannot update rules. New instances cannot start. | Manual restart. |
-| **Database** | Down | Stats reporting fails (background goroutines will leak). | Manual intervention. |
-| **Edge Proxy** | Panic/Crash | Traffic to target server is dropped. | K8s restart (if probes existed). |
-
-## Critical Reliability Gaps
-1. **Graceful Degradation**: If the Control Plane is down, the Proxy should ideally fall back to a cached rule set. It currently just logs an error and continues with whatever it has (or empty rules if it's the first start).
-2. **Backpressure**: There is no backpressure handling for telemetry or rule updates.
-3. **Panic Safety**: Some paths (e.g., regex matching or body parsing) lack explicit panic recovery, which could take down the entire proxy pod.
+## 2. Robustness
+The system is highly vulnerable to adversarial noise that increases entropy or binary ratios in legitimate traffic.

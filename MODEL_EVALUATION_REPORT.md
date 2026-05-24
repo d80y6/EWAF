@@ -1,10 +1,9 @@
-# Model Evaluation Report - Sentinel WAF
+# AI Claims Verification - Sentinel WAF
 
-## Accuracy
-- **Precision**: Very Low (due to high false positives on URLs like `/health` or UUIDs).
-- **Recall**: Moderate (can catch some high-entropy random probes).
-- **F1 Score**: Low.
+## 1. Claims Analysis
+- **"Deep Learning ONNX Engine"**: **FALSE**. `onnx.go` is a stub returning a hardcoded value.
+- **"Isolation Forest Detection"**: **FALSE**. `ml_forest.go` is an empty shell with no model.
+- **"AI-Assisted Rule Generation"**: **MISLEADING**. `ai_rules.go` uses hardcoded heuristics.
 
-## Performance
-- **Inference Latency**: <1ms (since it's just a loop over bytes).
-- **Adversarial Robustness**: Extremely Low. Attackers can easily craft low-entropy payloads or pad requests with "good" bytes to lower the average entropy and bypass the detection.
+## 2. Integrity Verdict
+The platform's marketing of "Next-Gen AI" is technically fraudulent in the current codebase. The features are placeholders for future development.

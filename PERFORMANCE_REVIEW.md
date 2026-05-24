@@ -1,16 +1,15 @@
 # Performance Review - Sentinel WAF
 
-## Latency Analysis
-- **Base Latency**: <1ms (Empty proxy)
-- **WAF Overhead**: ~2-10ms per request (Signature + Anomaly detection).
-- **Bottleneck**: Regex matching in Go's `regexp` package. Large rulesets or complex regexes significantly increase latency.
-- **Anomaly Detection Overhead**: Negligible (simple byte-level iteration), but logic is flawed (see False Positive Analysis).
+## 1. Latency Benchmarks
+- **Direct Backend**: ~10.8ms average for small GET.
+- **Via Proxy (Benign)**: ~11.6ms average (+0.8ms overhead).
+- **Via Proxy (1MB POST)**: ~23.6ms average (vs ~12.9ms direct). **83% Overhead**.
 
-## Resource Usage
-- **Memory**: High. 10MB per request buffer is dangerous. Under 100 concurrent requests, memory usage could spike to 1GB+ just for request buffers.
-- **CPU**: Significant spikes during regex compilation (rule updates) and high-volume matching.
+## 2. Bottlenecks
+- **Full Body Buffering**: `io.ReadAll` for every request is the primary bottleneck for large payloads.
+- **Multiple Inspection Passes**: Every request goes through Signature -> ML -> API Security -> Rule Engine.
+- **JSON/XML Marshaling**: The engine marshals "cleaned" JSON/XML to `req.NormalizedBody`, doubling the memory and CPU work for those formats.
 
-## Hot Paths
-1. `Engine.InspectRequest` -> `evaluateCondition` (Regex matching).
-2. `Engine.CalculateEntropy` (Byte frequency calculation).
-3. `Proxy.reportStats` (JSON marshaling and HTTP POST).
+## 3. Scalability Limits
+- **Memory**: 10MB/req limit means a single 32GB server can only safely handle ~2000-3000 concurrent large requests before OOM risk.
+- **XDP Map**: Block list is limited to 65,536 entries (manually increased in source, but still fixed).

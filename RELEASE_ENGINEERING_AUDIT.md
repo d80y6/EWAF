@@ -1,15 +1,13 @@
 # Release Engineering Audit - Sentinel WAF
 
-## Findings
+## 1. Artifacts
+- Binary builds for Proxy and Control Plane.
+- eBPF objects (`.o`) generated via `bpf2go`.
 
-### 1. Dependency Management
-- **Status**: **FAIR**
-- **Detail**: Uses standard `go.mod`. Most dependencies are up-to-date, but some indirect dependencies are several minor versions behind.
+## 2. Vulnerabilities
+- Hardcoded default secret in the source code.
+- No dependency vulnerability scanning (e.g., Snyk, Trivy) seen in the pipeline.
 
-### 2. Build Process
-- **Status**: **RUDIMENTARY**
-- **Detail**: Relies on `go run` or manual `docker build`. No `Makefile` or task runner to standardize the build/test cycle across environments.
-
-### 3. Artifact Security
-- **Status**: **POOR**
-- **Detail**: No container scanning, SBOM generation, or binary signing is part of the build process.
+## 3. Recommendation
+- Automate eBPF object generation in CI.
+- Implement secret injection via K8s Secrets/Vault instead of hardcoding.

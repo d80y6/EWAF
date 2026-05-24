@@ -1,14 +1,15 @@
-# XDP Validation Report - Sentinel WAF
+# Hotpath Profile Report - Sentinel WAF
 
-## Functional Validation
-- **Status**: **NOT VERIFIABLE IN CI** (Requires CAP_SYS_ADMIN and kernel support).
-- **Code Review Status**: **SECURE BUT LIMITED**.
+## 1. Top CPU Consumers
+1. `Engine.InspectRequest` -> Regex matching for all rules.
+2. `Engine.CalculateEntropy` -> Byte-level frequency iteration.
+3. `Proxy.reportStats` -> JSON marshaling of security events.
 
-## Performance Expectations
-- **Drop Performance**: XDP_DROP at the driver level can typically handle millions of packets per second with minimal CPU impact.
-- **Latency**: Sub-microsecond latency for the "fast path" drop.
+## 2. Top Memory Consumers
+1. `io.ReadAll(r.Body)` -> Primary source of memory pressure.
+2. `json.Marshal(data)` in `ParseBody` -> Re-marshaling normalized bodies.
 
-## Identified Risks
-1. **IPv6 Bypass**: Critical gap in modern networking environments.
-2. **Missing VLAN Support**: Common in data center/cloud environments.
-3. **No Metrics**: The XDP program doesn't count dropped packets in a map, making it impossible to observe kernel-level drops via the Dashboard.
+## 3. Recommendations
+- Move to specialized regex engine (Hyperscan).
+- Implement request body streaming for WAF inspection.
+- Batch telemetry events before sending to Control Plane.
