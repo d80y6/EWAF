@@ -2,38 +2,18 @@
 
 ## FINAL VERDICT: NOT PRODUCTION READY
 
-Sentinel WAF, in its current state, is a **High-Risk Prototype** rather than an enterprise-grade production platform. While the core proxy logic and signature-based engine are functional, the system suffers from critical architectural flaws, misleading feature claims, and significant operational gaps.
+Sentinel WAF is currently a **High-Risk Prototype**. While it demonstrates a functional core proxy and a functional (though bypassable) signature-based engine, the "Next-Gen" features (AI/ML, eBPF efficiency, Scalability) are either fake, incomplete, or flawed in their implementation.
 
 ### Critical Findings
-1. **Fake AI/ML Engine**: The marketed "ML Anomaly Detection" is actually a collection of disconnected stubs and rudimentary heuristics. The `ONNX` engine is a fake that returns hardcoded values.
-2. **Aggressive Anomaly Detection (DoS)**: The current "entropy-based" anomaly detection blocks legitimate traffic (e.g., `/health`) and will cause widespread outages if deployed in production.
-3. **Security Bypasses**: The eBPF/XDP layer is IPv4-only, leaving IPv6 traffic completely uninspected at the kernel level. Normalization in the engine is easily bypassable.
-4. **Scalability Bottlenecks**: The stats reporting architecture will fail under moderate load, and the reliance on SQLite for the Control Plane is a massive SPOF.
-5. **K8s Deployment Failures**: Provided Kubernetes manifests will **fail** to load the eBPF/XDP programs as they lack necessary security contexts and privileges.
+1. **Misleading ML/AI**: The ONNX and Isolation Forest engines are stubs or fake.
+2. **Security Bypasses**: Normalization logic is vulnerable to double encoding. Hardcoded default JWT secret is a massive risk.
+3. **Architectural DoS**: synchronous 10MB body buffering and aggressive entropy-based blocking pose a significant risk of outage for legitimate traffic.
+4. **Operational Gaps**: Multi-tenancy is broken (global rule leakage). eBPF deployment will fail in standard K8s due to privilege issues.
 
-### Scorecard
-- **Security**: 4/10
-- **Production Readiness**: 2/10
-- **Scalability**: 3/10
-- **Reliability**: 3/10
-- **Integrity (Claims vs Reality)**: 2/10
+### Production Readiness Score: **32/100** (Upgraded slightly from 28 due to confirmed IPv6 XDP support)
 
-### Production Readiness Score: **28/100**
-
-### Top Risks
-- **Operational Outage**: Aggressive false positives leading to valid traffic being blocked.
-- **Resource Exhaustion**: OOM crashes due to non-streaming 10MB request buffers.
-- **Kernel Incompatibility**: XDP loader failing due to lack of privileges or kernel version mismatch.
-
-### Immediate Remediation Priorities
-1. Fix `DetectAnomaly` to avoid blocking short/structured URLs like `/health`.
-2. Implement robust URL and Body normalization to prevent basic WAF bypasses.
-3. Update K8s manifests with proper `securityContext` and resource limits.
-4. Replace SQLite with a production-grade database (Postgres).
-5. Implement batching for telemetry to prevent CP saturation.
-
-### Long-Term Engineering Recommendations
-1. **Real ML Integration**: Actually connect the `onnxruntime` or `IsolationForest` to the request flow.
-2. **Protocol Parity**: Implement IPv6 support across all layers.
-3. **Observability**: Move to Prometheus/Grafana for metrics and use structured logging (e.g., `zap` or `zerolog`).
-4. **Push-based Config**: Move from polling to a streaming configuration protocol (gRPC xDS or similar).
+### Immediate Recommendations
+1. **Implement proper normalization**: Multi-pass URL decoding and path traversal resolution.
+2. **Fix Multi-tenancy**: Actually use the `TenantID` during rule inspection.
+3. **Streaming/Pooling**: Move away from `io.ReadAll` for request bodies.
+4. **Authenticity**: Replace fake ML stubs with either real models or honest heuristic labels.

@@ -1,65 +1,26 @@
 # Security Code Audit - Sentinel WAF
 
-## Critical Vulnerabilities
-
-### 1. Incomplete Path Normalization (Bypass)
+## 1. Normalization & Bypass (Critical)
 **File**: `pkg/engine/parser.go`
-**Logic**:
-```go
-func (e *Engine) NormalizeRequest(req *model.RequestContext) {
-    req.NormalizedURL = strings.ToLower(req.URL)
-    for strings.Contains(req.NormalizedURL, "//") {
-        req.NormalizedURL = strings.ReplaceAll(req.NormalizedURL, "//", "/")
-    }
-}
-```
-**Finding**: The normalization only handles multiple slashes. It does **not** handle:
-- URL encoding (e.g., `%2e%2e%2f` for `../`).
-- Multiple encodings.
-- Unicode evasions.
-- Path traversal via `.` or `..` directly (it just lowercases them).
-**Impact**: Attackers can easily bypass regex-based rules using URL encoding.
+- **Vulnerability**: `NormalizeRequest` only calls `url.QueryUnescape` once.
+- **Evidence**: Double encoding (e.g., `%253c` for `<`) bypasses rules because the first pass only decodes it to `%3c`.
+- **Finding**: Verified via runtime testing: `http://localhost:8000/search?q=%253cscript` returns 404 (Passed), bypassing XSS rule.
 
-### 2. Unsafe Memory Handling (DoS)
+## 2. Unsafe Body Handling (High)
 **File**: `internal/proxy/proxy.go`
-**Logic**:
-```go
-body, err := io.ReadAll(io.LimitReader(r.Body, MaxBodySize))
-```
-**Finding**: While `MaxBodySize` is 10MB, reading the entire body into memory for every request can lead to rapid OOM if an attacker sends many concurrent 10MB requests. There is no streaming inspection.
+- **Logic**: `body, err := io.ReadAll(io.LimitReader(r.Body, MaxBodySize))`
+- **Risk**: Memory exhaustion (DoS). Synchronous buffering of 10MB requests without streaming or pooling.
 
-### 3. Race Conditions in Rule/Policy Updates
-**File**: `internal/proxy/updater.go` & `pkg/engine/engine.go`
-**Finding**:
-- `Engine.LoadRules` uses a mutex, but `Engine.InspectRequest` uses `RLock`. This is generally safe.
-- **However**, `Proxy.apiPolicies` is updated in `updater.go` using `p.mu.Lock()`, and read in `ServeHTTP` using `RLock()`.
-- The `Engine.regex` map is recreated in `LoadRules` but there might be a race if `InspectRequest` is using the map while it's being swapped (though it's behind `RLock`).
+## 3. Hardcoded / Insecure Defaults (Medium)
+**File**: `cmd/control-plane/main.go`
+- **Finding**: Default JWT secret `s3ntinel-p0d-pr0ducti0n-s3cr3t-2025!` is hardcoded in the seed logic.
+- **Risk**: If not changed, attackers can forge JWTs for any API protected by the WAF.
 
-### 4. Weak JWT Validation
-**File**: `pkg/engine/api_security.go`
-**Finding**:
-- The implementation uses `jwt.Parse` with a key function that checks the signing method.
-- **Vulnerability**: If `policy.JWTSecret` is the default "sentinel-default-secret", it's trivial to forge tokens. The Control Plane seeds this default.
+## 4. Panic Paths
+- `Engine.LoadRules` returns an error on regex compile failure, which is handled in the updater. This is safe.
+- However, the `Proxy` does not have a recover middleware, meaning a panic in any request processing goroutine will crash the entire proxy.
 
-### 5. Insecure Engine Logic
-**File**: `pkg/engine/engine.go`
-**Finding**:
-- `evaluateCondition` for `body` target:
-```go
-case "body":
-    if req.NormalizedBody == "" && len(req.Body) > 0 {
-        req.NormalizedBody = string(req.Body)
-    }
-    targetValue = req.NormalizedBody
-```
-- If the body is large and not JSON/XML, it's converted to a string every time if `NormalizedBody` isn't set. `ParseBody` only sets it for JSON/XML.
-
-### 6. eBPF Verifier Risk
-**File**: `pkg/ebpf/c/xdp_fw.c`
-**Finding**:
-- The packet boundary checks seem correct:
-```c
-if ((void *)(eth + 1) > data_end) return XDP_PASS;
-if ((void *)(iph + 1) > data_end) return XDP_PASS;
-```
-- **Limitation**: Only handles IPv4. IPv6 packets will bypass the block list.
+## 5. Weak Anomaly Detection
+**File**: `pkg/engine/ml.go`
+- **Entropy Logic**: Simple Shannon entropy is used. Verified that it blocks legitimate high-entropy URLs (random tokens, UUIDs) and large binary POSTs.
+- **Risk**: Denial of Service for legitimate traffic (False Positives).

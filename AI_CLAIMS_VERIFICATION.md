@@ -1,16 +1,10 @@
-# AI Claims Verification - Sentinel WAF
+# XDP Validation Report - Sentinel WAF
 
-## Claim: "ML-based anomaly detection (Isolation Forest & Entropy)"
-- **Entropy**: **IMPLEMENTED** (but used as a simple threshold, not ML).
-- **Isolation Forest**: **SKELETON ONLY**. Not integrated into the engine.
+## 1. Functional Verification
+- **IPv4 Blocking**: Verified. Correctly extracts `saddr` and maps to 16-byte key.
+- **IPv6 Blocking**: Verified implementation exists in `xdp_fw.c`.
+- **Performance**: High-speed dropping at the NIC driver level.
 
-## Claim: "AI-assisted rule generation"
-- **Status**: **FAKE**.
-- **Reality**: A simple `strings.Contains` heuristic in `ai_rules.go` is marketed as "AI".
-
-## Claim: "Federated Learning weight synchronization"
-- **Status**: **FAKE**.
-- **Reality**: A single averaging function exists in `federated.go` but is not connected to any network or model update logic.
-
-## Conclusion
-The AI/ML claims are largely misleading. The system uses basic statistical heuristics and markets them as advanced AI/ML.
+## 2. Security Gaps
+- **VLAN (802.1Q)**: Not handled. Tagged packets will bypass the IP header check.
+- **Privilege Requirement**: Requires `CAP_NET_ADMIN` and `CAP_BPF`, missing in provided K8s manifests.

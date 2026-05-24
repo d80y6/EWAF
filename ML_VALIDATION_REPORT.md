@@ -1,22 +1,15 @@
-# ML Validation Report - Sentinel WAF
+# ML & AI Claims Validation - Sentinel WAF
 
-## 1. Feature Extraction
-**Status**: **BASIC**
-**Logic**: `CalculateEntropy` and a binary-to-string ratio check.
-**Finding**: These are statistical heuristics, not machine learning feature engineering. There is no vectorization of request patterns.
+## 1. Claims vs. Reality
+| Claim | Reality | Status |
+|-------|---------|--------|
+| **ONNX-based Deep Learning** | Returns hardcoded `0.5` | **FAKE** |
+| **Isolation Forest Anomaly Detection** | Empty shell, no trees, no training | **INCOMPLETE** |
+| **Federated Learning** | Simple average logic, not used | **STUB** |
+| **AI-Assisted Rule Generation** | Hardcoded `strings.Contains` | **HEURISTIC** |
 
-## 2. Model Execution
-**Status**: **FAKE**
-**Finding**: `DetectAnomaly` calls `CalculateEntropy` but does **not** use the `IsolationForest` or `ONNXEngine`.
-```go
-func (e *Engine) DetectAnomaly(req *model.RequestContext) bool {
-    urlEntropy := e.CalculateEntropy(req.NormalizedURL)
-    // ...
-    return req.Score > 10
-}
-```
-The complex ML models implemented in other files are completely disconnected from the actual request processing flow.
+## 2. Adversarial Robustness
+- **Finding**: The "ML" is so simple (Entropy + Binary Ratio) that it is trivial to evade or weaponize for DoS (False Positives).
 
-## 3. Training & Inference
-**Status**: **NON-EXISTENT**
-**Finding**: There is no code to train models, update weights from real traffic, or perform real-time inference using the `ONNXEngine`.
+## 3. Production Readiness
+- **Verdict**: **NOT READY**. The ML component is marketed as a core differentiator but is currently non-functional or misleading.
