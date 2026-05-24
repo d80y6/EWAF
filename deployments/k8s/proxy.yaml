@@ -15,8 +15,31 @@ spec:
       containers:
       - name: proxy
         image: sentinel-waf/proxy:latest
+        securityContext:
+          privileged: true
+          capabilities:
+            add: ["NET_ADMIN", "SYS_ADMIN"]
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
         ports:
         - containerPort: 80
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
         env:
         - name: TARGET_URL
           value: "http://backend-service:8080"
