@@ -530,3 +530,22 @@ Superseded by: M-10
 
 7. Which multi-tenant boundary in the current code is enforced by a runtime check vs enforced by architecture?
    - Enforced by runtime check: The `Engine.InspectRequest` function selects rules based on `req.TenantID` at runtime. Architecture enforcement (e.g., separate process per tenant) is not present.
+
+## Section 5: Gate Condition Reality Check
+
+| Milestone | Test Corpus Named? | CI-runnable Today? | Numeric Threshold? | Gap |
+| :--- | :--- | :--- | :--- | :--- |
+| M-01 | YES (cURL) | YES | YES (0 mod) | None |
+| M-02 | YES (nmap) | YES | YES (100%) | `testssl.sh` missing in environment |
+| M-03 | YES (Go Test) | YES | YES (100%) | None |
+| M-04 | YES (GoTestWAF) | NO | YES (90%) | `GoTestWAF` binary not in PATH |
+| M-05 | YES (GoTestWAF) | NO | YES (90%) | `GoTestWAF` binary not in PATH |
+| M-06 | YES (GoTestWAF) | NO | YES (85%) | `GoTestWAF` binary not in PATH |
+| M-07 | YES (Chaos Test) | PARTIAL | YES (100%) | Requires Redis in CI env |
+| M-08 | YES (Mock TI) | YES | YES (30s) | None |
+| M-09 | YES (cURL) | YES | YES (100%) | None |
+| M-10 | YES (Parallel) | YES | YES (100%) | None |
+| M-11 | YES (Random) | YES | YES (Score > 0)| None |
+| M-12 | YES (API Scan) | NO | YES (401/403)| DAST scanner (e.g. ZAP) not configured |
+| M-13 | YES (Monitor) | YES | YES (1s/99%) | None |
+| M-14 | YES (k6+GoTestWAF)| NO | YES (2000 RPS)| `k6` and `GoTestWAF` missing |
