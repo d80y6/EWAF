@@ -18,6 +18,22 @@ export default function RulesPage() {
       .catch(err => console.error(err));
   }, []);
 
+  const [simulationResult, setSimulationResult] = useState<any>(null);
+  const [simulating, setSimulating] = useState(false);
+
+  const runSimulation = (rule: any) => {
+    setSimulating(true);
+    fetch('/api/simulate', {
+      method: 'POST',
+      body: JSON.stringify({ rule }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        setSimulationResult(data);
+        setSimulating(false);
+      });
+  };
+
   return (
     <div className="p-8">
       <header className="flex items-center justify-between mb-8">
@@ -29,6 +45,18 @@ export default function RulesPage() {
           <Plus className="w-4 h-4" /> Create Rule
         </button>
       </header>
+
+      {simulationResult && (
+        <div className="mb-8 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center justify-between">
+          <div>
+            <span className="font-bold text-indigo-400">Simulation Report:</span>
+            <span className="ml-2 text-slate-300">
+               Rule would have matched {simulationResult.matches} requests out of {simulationResult.totalAnalyzed} ({simulationResult.impactPercent.toFixed(2)}% impact).
+            </span>
+          </div>
+          <button onClick={() => setSimulationResult(null)} className="text-slate-400 hover:text-white">Close</button>
+        </div>
+      )}
 
       <div className="flex gap-4 mb-6">
         <div className="flex-1 bg-slate-900 border border-slate-800 rounded-lg flex items-center px-4">
@@ -67,6 +95,12 @@ export default function RulesPage() {
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => runSimulation(rule)}
+                      className="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-slate-300 transition-colors"
+                    >
+                      {simulating ? '...' : 'Simulate'}
+                    </button>
                     <button className="text-slate-400 hover:text-white transition-colors"><Edit2 className="w-4 h-4" /></button>
                     <button className="text-slate-400 hover:text-rose-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
                   </div>

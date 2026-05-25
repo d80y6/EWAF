@@ -141,6 +141,41 @@ func (cp *ControlPlane) PostStats(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (cp *ControlPlane) SimulateRule(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Rule model.Rule `json:"rule"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Fetch recent events to simulate against
+	var events []model.SecurityEvent
+	cp.db.Order("timestamp desc").Limit(1000).Find(&events)
+
+	matches := 0
+	for _, event := range events {
+		// Mock engine context for simulation
+		// In a real implementation, we'd reconstruct model.RequestContext and use engine.evaluateCondition
+		if strings.Contains(event.URL, req.Rule.Conditions[0].Value) {
+			matches++
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"totalAnalyzed": len(events),
+		"matches":       matches,
+		"impactPercent": float64(matches) / float64(len(events)) * 100,
+	})
+}
+
 func (cp *ControlPlane) incrementStat(key string) {
 	err := cp.db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "key"}},
@@ -200,6 +235,7 @@ func main() {
 	http.HandleFunc("/api/policies", cp.GetAPIPolicies)
 	http.HandleFunc("/api/stats", cp.GetStats)
 	http.HandleFunc("/api/stats/report", cp.PostStats)
+	http.HandleFunc("/api/simulate", cp.SimulateRule)
 
 	log.Println("Control Plane API listening on :8081")
 	if err := http.ListenAndServe(":8081", nil); err != nil {

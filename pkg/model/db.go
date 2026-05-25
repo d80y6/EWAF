@@ -14,7 +14,7 @@ type Rule struct {
 	Description string `gorm:"type:text"`
 	Severity    string `gorm:"size:20"`
 	Category    string `gorm:"size:50"`
-	Action      string `gorm:"size:20"`
+	Action      string `gorm:"size:20"` // block, allow, shadow
 	Score       int
 	TenantID    uint   `gorm:"index"`
 	RawConditions string `gorm:"column:conditions;type:text"`

@@ -24,3 +24,22 @@
  GET /logs 200 in 66ms
  GET /rules 200 in 59ms
  GET /settings 200 in 49ms
+ ✓ Compiled in 5.4s (755 modules)
+ ✓ Compiled in 1261ms (755 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 4.1s (895 modules)
+The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+ GET / 200 in 5020ms
+ ✓ Compiled /logs in 439ms (903 modules)
+ GET /logs 200 in 718ms
+ ✓ Compiled /rules in 310ms (912 modules)
+ GET /rules 200 in 453ms
+ ✓ Compiled /settings in 322ms (921 modules)
+ GET /settings 200 in 448ms

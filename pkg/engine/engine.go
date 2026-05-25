@@ -118,6 +118,9 @@ func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) 
 			req.MatchedRules = append(req.MatchedRules, rule.RuleID)
 			if rule.Action == "block" {
 				shouldBlock = true
+			} else if rule.Action == "shadow" {
+				// Shadow mode: log but don't set shouldBlock
+				req.Tags = append(req.Tags, "SHADOW_MATCH:"+rule.RuleID)
 			}
 		}
 	}

@@ -2,7 +2,18 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Shield, AlertTriangle, Activity, Settings, List, BarChart3, Globe, Users, Cpu, BrainCircuit } from 'lucide-react';
+import { Shield, AlertTriangle, Activity, Settings, List, BarChart3, Globe, Users, Cpu, BrainCircuit, TrendingUp } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+
+const mockChartData = [
+  { name: '00:00', requests: 400, blocked: 24 },
+  { name: '04:00', requests: 300, blocked: 18 },
+  { name: '08:00', requests: 900, blocked: 120 },
+  { name: '12:00', requests: 1200, blocked: 240 },
+  { name: '16:00', requests: 1500, blocked: 310 },
+  { name: '20:00', requests: 1100, blocked: 180 },
+  { name: '23:59', requests: 800, blocked: 90 },
+];
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -101,6 +112,56 @@ export default function Dashboard() {
           icon={<Cpu className="w-5 h-5 text-cyan-400" />}
         />
       </main>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
+        <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-xl">
+          <div className="flex items-center gap-2 mb-6">
+             <TrendingUp className="w-5 h-5 text-indigo-400" />
+             <h3 className="font-semibold text-lg">Traffic Distribution</h3>
+          </div>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={mockChartData}>
+                <defs>
+                  <linearGradient id="colorReq" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
+                <YAxis stroke="#64748b" fontSize={12} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc' }}
+                  itemStyle={{ color: '#f8fafc' }}
+                />
+                <Area type="monotone" dataKey="requests" stroke="#6366f1" fillOpacity={1} fill="url(#colorReq)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-xl">
+           <div className="flex items-center gap-2 mb-6">
+             <Shield className="w-5 h-5 text-rose-400" />
+             <h3 className="font-semibold text-lg">Threat Mitigation</h3>
+          </div>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={mockChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
+                <YAxis stroke="#64748b" fontSize={12} />
+                <Tooltip
+                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc' }}
+                   itemStyle={{ color: '#f8fafc' }}
+                />
+                <Line type="monotone" dataKey="blocked" stroke="#f43f5e" strokeWidth={2} dot={{ fill: '#f43f5e' }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
 
       <section className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
         <div className="p-6 border-b border-slate-800 flex items-center justify-between">
