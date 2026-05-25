@@ -549,3 +549,25 @@ Superseded by: M-10
 | M-12 | YES (API Scan) | NO | YES (401/403)| DAST scanner (e.g. ZAP) not configured |
 | M-13 | YES (Monitor) | YES | YES (1s/99%) | None |
 | M-14 | YES (k6+GoTestWAF)| NO | YES (2000 RPS)| `k6` and `GoTestWAF` missing |
+
+## Section 6: ML Anomaly Detection — Honest Assessment
+
+1. Is there a trained model artifact in the codebase?
+   - NO. Search for `.onnx`, `.bin`, `.pt`, `.h5` yielded no relevant model files. `pkg/engine/onnx.go` contains a mock `ONNXEngine` that returns a hardcoded 0.5 score.
+
+2. If YES: N/A
+
+3. If NO: what is the current implementation doing instead?
+   - Precise implementation in `pkg/engine/ml.go` (`DetectAnomaly`):
+     - **Heuristic Entropy**: Calculates Shannon entropy of the URL string. If > 6.5, increments request score by 5.
+     - **Binary Ratio**: Calculates the ratio of non-printable bytes (<32 or >126) in the request body. If > 0.3, increments score by 10.
+     - **Skeletal Scoring**: Calls `e.forest.Score(features)` where features are `[urlEntropy, bodyEntropy, binaryRatio, bodyLength]`. However, `pkg/engine/ml_forest.go` reveals that `Trees` are never populated in the `NewEngine` constructor or rule loading logic.
+
+4. What is the p99 inference latency of the current implementation measured against 10,000 representative requests?
+   - [NEEDS HUMAN SECURITY REVIEW]: No specific performance profile for 10,000 requests is currently available. General RPS for simple requests is ~2800, but latency specifically for the entropy calculation in the ML loop has not been isolated.
+
+5. What happens to a request when the ML component is unavailable?
+   - Exact code path: `pkg/engine/ml.go` line 67 (`if len(e.forest.Trees) > 0`). If the component (Isolation Forest) is uninitialized/unavailable, the scoring is simply skipped. For the ONNX mock, `pkg/engine/onnx.go` line 14 returns `0.5, nil`, meaning it "fails" by returning a neutral, non-blocking score.
+
+6. Verdict: ML in name only.
+   - **Justification**: The primary anomaly detection logic consists of hardcoded heuristic thresholds (6.5 for entropy, 0.3 for binary ratio) and manual score increments. The actual machine learning components (ONNX, Isolation Forest) are non-functional skeletons or hardcoded mocks.
