@@ -1,10 +1,32 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { List, Plus, Search, Trash2, Edit2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Plus, Search, Trash2, Edit2 } from 'lucide-react';
+
+interface Rule {
+  ID: string;
+  RuleID?: string;
+  Name: string;
+  Action: string;
+  Severity?: string;
+  Score: number;
+  Conditions: Array<{
+    Operator: string;
+    Target: string;
+    Value: string;
+  }>;
+}
+
+interface SimulationResult {
+  matches: number;
+  totalAnalyzed: number;
+  impactPercent: number;
+}
 
 export default function RulesPage() {
-  const [rules, setRules] = useState([]);
+  const router = useRouter();
+  const [rules, setRules] = useState<Rule[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,10 +40,13 @@ export default function RulesPage() {
       .catch(err => console.error(err));
   }, []);
 
-  const [simulationResult, setSimulationResult] = useState<any>(null);
+  const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
   const [simulating, setSimulating] = useState(false);
 
-  const runSimulation = (rule: any) => {
+  const [showModal, setShowModal] = useState(false);
+  const [newRule, setNewRule] = useState<Partial<Rule>>({ Name: '', RuleID: '', Action: 'block', Score: 50, Conditions: [{ Operator: 'contains', Target: 'url', Value: '' }] });
+
+  const runSimulation = (rule: Rule) => {
     setSimulating(true);
     fetch('/api/simulate', {
       method: 'POST',
@@ -34,6 +59,22 @@ export default function RulesPage() {
       });
   };
 
+  const handleCreateRule = () => {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'}/api/rules`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newRule),
+    }).then(() => {
+      setShowModal(false);
+      router.refresh();
+      // Fetch rules again to avoid full reload
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081';
+      fetch(`${apiUrl}/api/rules`)
+        .then(res => res.json())
+        .then(data => setRules(data));
+    });
+  };
+
   return (
     <div className="p-8">
       <header className="flex items-center justify-between mb-8">
@@ -41,7 +82,10 @@ export default function RulesPage() {
           <h1 className="text-3xl font-bold tracking-tight">WAF Rules</h1>
           <p className="text-slate-400 mt-1">Manage signature-based detection policies.</p>
         </div>
-        <button className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors">
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors"
+        >
           <Plus className="w-4 h-4" /> Create Rule
         </button>
       </header>
@@ -79,7 +123,7 @@ export default function RulesPage() {
           <tbody className="divide-y divide-slate-800">
             {loading ? (
               <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">Loading rules...</td></tr>
-            ) : rules.map((rule: any) => (
+            ) : rules.map((rule: Rule) => (
               <tr key={rule.RuleID || rule.ID} className="hover:bg-slate-800/20 transition-colors">
                 <td className="px-6 py-4 font-mono text-xs text-slate-500">{rule.RuleID}</td>
                 <td className="px-6 py-4 font-medium">{rule.Name}</td>
@@ -91,7 +135,7 @@ export default function RulesPage() {
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <span className="text-sm font-medium">{rule.Score >= 50 ? 'High' : 'Medium'}</span>
+                  <span className="text-sm font-medium">{(rule.Score ?? 0) >= 50 ? 'High' : 'Medium'}</span>
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex justify-end gap-3">
@@ -110,6 +154,65 @@ export default function RulesPage() {
           </tbody>
         </table>
       </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-8 shadow-2xl">
+            <h2 className="text-2xl font-bold mb-6">Create New WAF Rule</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">Rule Name</label>
+                <input
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2"
+                  placeholder="e.g. Block SQLi"
+                  onChange={e => setNewRule({...newRule, Name: e.target.value})}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-1">Rule ID</label>
+                  <input
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 font-mono"
+                    placeholder="SQLI_101"
+                    onChange={e => setNewRule({...newRule, RuleID: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-1">Action</label>
+                  <select
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2"
+                    onChange={e => setNewRule({...newRule, Action: e.target.value})}
+                  >
+                    <option value="block">Block</option>
+                    <option value="shadow">Shadow</option>
+                    <option value="allow">Allow</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">Detection Pattern (Regex/Contains)</label>
+                <input
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 font-mono"
+                  placeholder="UNION SELECT"
+                  onChange={e => {
+                    const conds = [...(newRule.Conditions || [])];
+                    if (conds.length > 0) {
+                      conds[0] = { ...conds[0], Value: e.target.value };
+                    } else {
+                      conds.push({ Operator: 'contains', Target: 'url', Value: e.target.value });
+                    }
+                    setNewRule({...newRule, Conditions: conds});
+                  }}
+                />
+              </div>
+            </div>
+            <div className="mt-8 flex justify-end gap-3">
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-400 hover:text-white transition-colors">Cancel</button>
+              <button onClick={handleCreateRule} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg font-bold transition-colors">Create Rule</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

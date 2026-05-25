@@ -50,6 +50,20 @@ func NewControlPlane(dsn string) (*ControlPlane, error) {
 	return &ControlPlane{db: db}, nil
 }
 
+func (cp *ControlPlane) PostRule(w http.ResponseWriter, r *http.Request) {
+	var rule model.Rule
+	if err := json.NewDecoder(r.Body).Decode(&rule); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := cp.db.Create(&rule).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(rule)
+}
+
 func (cp *ControlPlane) GetRules(w http.ResponseWriter, r *http.Request) {
 	var rules []model.Rule
 	if err := cp.db.Find(&rules).Error; err != nil {
@@ -88,6 +102,41 @@ func (cp *ControlPlane) GetStats(w http.ResponseWriter, r *http.Request) {
 			res["mlAnomalies"] = s.Value
 		case "api_violations":
 			res["apiViolations"] = s.Value
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	json.NewEncoder(w).Encode(res)
+}
+
+func (cp *ControlPlane) GetEvents(w http.ResponseWriter, r *http.Request) {
+	var events []model.SecurityEvent
+	if err := cp.db.Order("timestamp desc").Limit(100).Find(&events).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Format for frontend
+	type UIEvent struct {
+		ID     uint      `json:"id"`
+		Time   time.Time `json:"time"`
+		IP     string    `json:"ip"`
+		Method string    `json:"method"`
+		URL    string    `json:"url"`
+		Rule   string    `json:"rule"`
+		Score  int       `json:"score"`
+	}
+	res := make([]UIEvent, len(events))
+	for i, e := range events {
+		res[i] = UIEvent{
+			ID:     e.ID,
+			Time:   e.Timestamp,
+			IP:     e.RemoteAddr,
+			Method: e.Method,
+			URL:    e.URL,
+			Rule:   e.MatchedRules,
+			Score:  e.Score,
 		}
 	}
 
@@ -202,14 +251,13 @@ func (cp *ControlPlane) GetAPIPolicies(w http.ResponseWriter, r *http.Request) {
 	if len(policies) == 0 {
 		jwtSecret := os.Getenv("SENTINEL_JWT_SECRET")
 		if jwtSecret == "" {
-			jwtSecret = "s3ntinel-p0d-pr0ducti0n-s3cr3t-2025!"
-			log.Println("WARNING: SENTINEL_JWT_SECRET not set, using default insecure secret")
+			log.Println("WARNING: SENTINEL_JWT_SECRET not set, API security will be bypassed")
 		}
 		policies = []model.APISecurityPolicy{
 			{
 				ID:            "1",
 				PathPrefix:    "/api",
-				JWTVaildation: true,
+				JWTVaildation: jwtSecret != "",
 				JWTSecret:     jwtSecret,
 			},
 		}
@@ -231,11 +279,18 @@ func main() {
 		log.Fatalf("Failed to initialize control plane: %v", err)
 	}
 
-	http.HandleFunc("/api/rules", cp.GetRules)
+	http.HandleFunc("/api/rules", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			cp.PostRule(w, r)
+		} else {
+			cp.GetRules(w, r)
+		}
+	})
 	http.HandleFunc("/api/policies", cp.GetAPIPolicies)
 	http.HandleFunc("/api/stats", cp.GetStats)
 	http.HandleFunc("/api/stats/report", cp.PostStats)
 	http.HandleFunc("/api/simulate", cp.SimulateRule)
+	http.HandleFunc("/api/events", cp.GetEvents)
 
 	log.Println("Control Plane API listening on :8081")
 	if err := http.ListenAndServe(":8081", nil); err != nil {

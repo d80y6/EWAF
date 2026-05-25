@@ -1,22 +1,40 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, Search, Filter } from 'lucide-react';
+import { Search, Filter } from 'lucide-react';
+
+interface SecurityEvent {
+  id: string;
+  time: string;
+  ip: string;
+  method: string;
+  url: string;
+  rule: string;
+  score: number;
+}
 
 export default function LogsPage() {
-  const [logs, setLogs] = useState([]);
+  const [logs, setLogs] = useState<SecurityEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mocking logs for now as there's no dedicated logs endpoint yet
-    // In a real system, this would fetch from /api/stats/events or similar
-    const mockLogs = [
-      { id: '1', time: new Date().toISOString(), ip: '192.168.1.50', method: 'POST', url: '/api/login', rule: 'SQL_INJECTION_ATTEMPT', score: 80 },
-      { id: '2', time: new Date().toISOString(), ip: '45.78.12.3', method: 'GET', url: '/etc/passwd', rule: 'PATH_TRAVERSAL', score: 100 },
-      { id: '3', time: new Date().toISOString(), ip: '10.0.0.15', method: 'POST', url: '/graphql', rule: 'GRAPHQL_COMPLEXITY_EXCEEDED', score: 40 },
-    ];
-    setLogs(mockLogs as any);
-    setLoading(false);
+    async function fetchLogs() {
+      try {
+        const response = await fetch('http://localhost:8081/api/events');
+        if (response.ok) {
+          const data = await response.json();
+          setLogs(data);
+        } else {
+          // Fallback to empty if backend fails
+          setLogs([]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch logs:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchLogs();
   }, []);
 
   return (
@@ -52,7 +70,7 @@ export default function LogsPage() {
           <tbody className="divide-y divide-slate-800">
             {loading ? (
               <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">Loading events...</td></tr>
-            ) : logs.map((log: any) => (
+            ) : logs.map((log) => (
               <tr key={log.id} className="hover:bg-slate-800/20 transition-colors">
                 <td className="px-6 py-4 text-sm text-slate-400">{new Date(log.time).toLocaleString()}</td>
                 <td className="px-6 py-4 font-mono text-sm">{log.ip}</td>

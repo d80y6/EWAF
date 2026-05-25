@@ -1,7 +1,7 @@
 "use client";
 
-import React from 'react';
-import { Settings as SettingsIcon, Shield, Database, Bell, Key } from 'lucide-react';
+import React, { ReactNode } from 'react';
+import { Shield, Database, Bell, Key } from 'lucide-react';
 
 export default function SettingsPage() {
   return (
@@ -81,7 +81,14 @@ export default function SettingsPage() {
   );
 }
 
-function SettingsSection({ title, description, icon, children }: any) {
+interface SettingsSectionProps {
+  title: string;
+  description: string;
+  icon: ReactNode;
+  children: ReactNode;
+}
+
+function SettingsSection({ title, description, icon, children }: SettingsSectionProps) {
   return (
     <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
       <div className="flex items-center gap-3 mb-4">
@@ -96,7 +103,12 @@ function SettingsSection({ title, description, icon, children }: any) {
   );
 }
 
-function Toggle({ label, checked = false }: any) {
+interface ToggleProps {
+  label: string;
+  checked?: boolean;
+}
+
+function Toggle({ label, checked = false }: ToggleProps) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm text-slate-300">{label}</span>

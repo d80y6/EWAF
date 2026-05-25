@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Shield, AlertTriangle, Activity, Settings, List, BarChart3, Globe, Users, Cpu, BrainCircuit, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect, ReactNode } from 'react';
+import { Shield, AlertTriangle, Activity, List, BarChart3, Globe, Users, Cpu, BrainCircuit, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 const mockChartData = [
@@ -14,6 +13,13 @@ const mockChartData = [
   { name: '20:00', requests: 1100, blocked: 180 },
   { name: '23:59', requests: 800, blocked: 90 },
 ];
+
+interface Rule {
+  ID: string;
+  Name: string;
+  Category?: string;
+  Action: string;
+}
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -28,7 +34,7 @@ export default function Dashboard() {
     wasmPlugins: 2,
   });
 
-  const [rules, setRules] = useState([]);
+  const [rules, setRules] = useState<Rule[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -193,7 +199,7 @@ export default function Dashboard() {
                 <tr>
                   <td colSpan={5} className="px-6 py-8 text-center text-slate-500">No rules found</td>
                 </tr>
-              ) : rules.map((rule: any) => (
+              ) : rules.map((rule: Rule) => (
                 <tr key={rule.ID} className="hover:bg-slate-800/20 transition-colors">
                   <td className="px-6 py-4 text-slate-500 font-mono text-sm">{rule.ID}</td>
                   <td className="px-6 py-4 font-medium">{rule.Name}</td>
@@ -224,7 +230,14 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ title, value, icon, critical = false }: any) {
+interface StatCardProps {
+  title: string;
+  value: string;
+  icon: ReactNode;
+  critical?: boolean;
+}
+
+function StatCard({ title, value, icon, critical = false }: StatCardProps) {
   return (
     <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-xl">
       <div className="flex items-center justify-between mb-4">
