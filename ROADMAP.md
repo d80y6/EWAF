@@ -28,3 +28,9 @@ This roadmap outlines the necessary steps to transform the Sentinel WAF prototyp
 *   **Full SIEM Integration**: Support Syslog, CEF, and direct exporters for Splunk, Elastic, and Datadog.
 *   **Audit Logging**: Implement immutable audit trails for rule changes and administrative actions.
 *   **Performance Profiling**: Add continuous profiling (pprof) and Prometheus metrics for every stage of the inspection pipeline.
+
+## Phase 6: Frontend & UX Excellence
+*   **Unified Dashboard**: Implement a comprehensive UI with support for multi-tenancy views, role-based access control (RBAC), and real-time security event streaming.
+*   **Log Explorer**: Build a high-performance log viewer with advanced filtering (IP, URI, RuleID, Severity) and visualization.
+*   **Visual Policy Builder**: Create a drag-and-drop or form-based interface for complex rule creation, moving away from raw JSON editing.
+*   **Global Settings & Org Management**: Interface for managing API keys, JWT secrets (integration with Vault), and organization-level configurations.

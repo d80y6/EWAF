@@ -94,7 +94,17 @@ func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) 
 		}
 	}
 
-	for _, rule := range e.rules {
+	// Select rules based on tenant ID to ensure isolation
+	targetRules := e.rules
+	if req.TenantID != 0 {
+		e.mu.RLock()
+		if tr, ok := e.tenantRules[req.TenantID]; ok && len(tr) > 0 {
+			targetRules = tr
+		}
+		e.mu.RUnlock()
+	}
+
+	for _, rule := range targetRules {
 		matched := true
 		for _, cond := range rule.Conditions {
 			if !e.evaluateCondition(cond, req) {

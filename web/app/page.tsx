@@ -44,17 +44,17 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50 p-8">
+    <div className="p-8">
       <header className="flex items-center justify-between mb-12">
-        <div className="flex items-center gap-3">
-          <Shield className="w-10 h-10 text-indigo-500" />
-          <h1 className="text-3xl font-bold tracking-tight">Sentinel WAF</h1>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Security Overview</h1>
+          <p className="text-slate-400 mt-1">Real-time threat monitoring and system status.</p>
         </div>
         <div className="flex items-center gap-4">
-          <span className="bg-emerald-500/10 text-emerald-500 px-3 py-1 rounded-full text-sm font-medium border border-emerald-500/20">
+          <span className="bg-emerald-500/10 text-emerald-500 px-3 py-1 rounded-full text-sm font-medium border border-emerald-500/20 flex items-center gap-2">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
             System Online
           </span>
-          <Settings className="w-6 h-6 text-slate-400 cursor-pointer hover:text-white transition-colors" />
         </div>
       </header>
 

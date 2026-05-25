@@ -1,0 +1,52 @@
+
+> web@0.1.0 build
+> next build
+
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+   ▲ Next.js 15.5.18
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 9.2s
+   Linting and checking validity of types ...
+
+Failed to compile.
+
+./app/logs/page.tsx
+4:10  Warning: 'ShieldAlert' is defined but never used.  @typescript-eslint/no-unused-vars
+18:5  Error: Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/app/web/app/logs/page.tsx:18:5
+  16 |       { id: '3', time: new Date().toISOString(), ip: '10.0.0.15', method: 'POST', url: '/graphql', rule: 'GRAPHQL_COMPLEXITY_EXCEEDED', score: 40 },
+  17 |     ];
+> 18 |     setLogs(mockLogs as any);
+     |     ^^^^^^^ Avoid calling setState() directly within an effect
+  19 |     setLoading(false);
+  20 |   }, []);
+  21 |  react-hooks/set-state-in-effect
+18:25  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+55:32  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/page.tsx
+5:10  Warning: 'Shield' is defined but never used.  @typescript-eslint/no-unused-vars
+5:43  Warning: 'Settings' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/rules/page.tsx
+4:10  Warning: 'List' is defined but never used.  @typescript-eslint/no-unused-vars
+54:34  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/settings/page.tsx
+4:22  Warning: 'SettingsIcon' is defined but never used.  @typescript-eslint/no-unused-vars
+84:66  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+99:45  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
