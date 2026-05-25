@@ -1,0 +1,32 @@
+name: SQLi Quality Gate
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  sqli-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.25.0'
+
+    - name: Run Engine Tests
+      run: go test -v ./pkg/engine/...
+
+    - name: Benchmark Performance
+      run: go test -bench=. ./pkg/engine/...
+
+    - name: Run GoTestWAF (Docker)
+      # This step might fail in standard GitHub hosted runners without Docker-in-Docker setup
+      # but it provides the correct integration pattern for a production WAF.
+      continue-on-error: true
+      run: |
+        mkdir -p reports
+        ./scripts/gotestwaf/run.sh
