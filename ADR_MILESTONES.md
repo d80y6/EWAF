@@ -571,3 +571,29 @@ Superseded by: M-10
 
 6. Verdict: ML in name only.
    - **Justification**: The primary anomaly detection logic consists of hardcoded heuristic thresholds (6.5 for entropy, 0.3 for binary ratio) and manual score increments. The actual machine learning components (ONNX, Isolation Forest) are non-functional skeletons or hardcoded mocks.
+
+## Section 7: Next Single Ticket
+
+**Title**: Implement and verify OWASP CRS SQLi rule class coverage using GoTestWAF.
+
+**Scope**:
+- Configure and install `GoTestWAF` in the CI pipeline environment.
+- Map existing SQLi regex rules in `pkg/rules/default_rules.go` to the OWASP CRS 942xxx class requirements.
+- Add an automated test runner script that executes `GoTestWAF` against a running instance of the Sentinel Proxy.
+
+**Acceptance criteria**:
+- Given the OWASP CRS SQLi test suite (942xxx rules), the engine blocks ≥90% of payloads. Verified by: automated run of GoTestWAF against staging proxy.
+
+**Out of scope**:
+- Implementing XSS (941xxx) or RCE (932xxx) rule classes.
+- Modifying the core rule evaluation engine performance logic.
+- Building a custom attack corpus outside of the standard OWASP CRS test suite.
+
+**Security consideration**:
+- Over-normalization or broad regex patterns introduced to meet the 90% threshold may cause excessive False Positives, leading to a de-facto denial of service for legitimate traffic.
+
+**Definition of done**:
+- Automated test runs against named corpus (OWASP CRS SQLi).
+- Pass rate meets numeric threshold (≥90%).
+- p99 latency overhead within budget (≤ 10ms for SQLi ruleset).
+- No regression in earlier milestones (M-01, M-02, M-03).
