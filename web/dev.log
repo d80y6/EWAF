@@ -1,0 +1,26 @@
+
+> web@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.18
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.2:3000
+
+ ✓ Starting...
+ ✓ Ready in 1961ms
+ ○ Compiling / ...
+ ✓ Compiled / in 7.7s (697 modules)
+ GET / 200 in 9476ms
+ ○ Compiling /logs ...
+ ✓ Compiled /logs in 812ms (692 modules)
+ GET /logs 200 in 1010ms
+ GET /logs 200 in 61ms
+ ✓ Compiled /rules in 437ms (693 modules)
+ GET /rules 200 in 551ms
+ ✓ Compiled /settings in 444ms (710 modules)
+ GET /settings 200 in 583ms
+ ✓ Compiled in 439ms (724 modules)
+ GET / 200 in 408ms
+ GET /logs 200 in 66ms
+ GET /rules 200 in 59ms
+ GET /settings 200 in 49ms

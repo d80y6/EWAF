@@ -46,15 +46,26 @@ func NewProxy(targetURL string, e *engine.Engine, cpURL string, xdp *ebpf.XDPMan
 
 const MaxBodySize = 10 * 1024 * 1024 // 10MB limit
 
+var bodyPool = sync.Pool{
+	New: func() interface{} {
+		return new(bytes.Buffer)
+	},
+}
+
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// 1. Capture request context with memory-efficient limit
-	// Still need the body for inspection, but we ensure it's limited
-	// and we could potentially use a sync.Pool for buffers in a higher-load scenario.
-	body, err := io.ReadAll(io.LimitReader(r.Body, MaxBodySize))
-	if err != nil {
+	buf := bodyPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer bodyPool.Put(buf)
+
+	_, err := io.CopyN(buf, r.Body, int64(MaxBodySize))
+	if err != nil && err != io.EOF {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	body := make([]byte, buf.Len())
+	copy(body, buf.Bytes())
+
 	r.Body = io.NopCloser(bytes.NewBuffer(body))
 
 	reqCtx := &model.RequestContext{

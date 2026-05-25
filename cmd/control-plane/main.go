@@ -165,12 +165,17 @@ func (cp *ControlPlane) GetAPIPolicies(w http.ResponseWriter, r *http.Request) {
 
 	// Fallback to default if none configured
 	if len(policies) == 0 {
+		jwtSecret := os.Getenv("SENTINEL_JWT_SECRET")
+		if jwtSecret == "" {
+			jwtSecret = "s3ntinel-p0d-pr0ducti0n-s3cr3t-2025!"
+			log.Println("WARNING: SENTINEL_JWT_SECRET not set, using default insecure secret")
+		}
 		policies = []model.APISecurityPolicy{
 			{
 				ID:            "1",
 				PathPrefix:    "/api",
 				JWTVaildation: true,
-				JWTSecret:     "s3ntinel-p0d-pr0ducti0n-s3cr3t-2025!",
+				JWTSecret:     jwtSecret,
 			},
 		}
 	}

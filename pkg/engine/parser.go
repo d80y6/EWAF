@@ -10,15 +10,18 @@ import (
 )
 
 func (e *Engine) NormalizeRequest(req *model.RequestContext) {
-	// 1. URL decoding to prevent %xx encoding bypasses
-	decoded, err := url.QueryUnescape(req.URL)
-	if err != nil {
-		// Fallback to raw URL if it's malformed
-		decoded = req.URL
+	// 1. Multi-pass URL decoding to prevent double-encoding bypasses
+	current := req.URL
+	for i := 0; i < 3; i++ { // Perform up to 3 passes to catch nested encodings
+		decoded, err := url.QueryUnescape(current)
+		if err != nil || decoded == current {
+			break
+		}
+		current = decoded
 	}
 
 	// 2. Unicode normalization (simplified to lowercase)
-	req.NormalizedURL = strings.ToLower(decoded)
+	req.NormalizedURL = strings.ToLower(current)
 
 	// 3. Path normalization: collapse multiple slashes recursively
 	for strings.Contains(req.NormalizedURL, "//") {

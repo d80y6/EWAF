@@ -7,6 +7,7 @@ import (
 
 type RequestContext struct {
 	ID             string
+	TenantID       uint
 	Method         string
 	URL            string
 	Host           string
