@@ -52,6 +52,10 @@ func (e *Engine) LoadRules(rules []model.Rule) error {
 	return nil
 }
 
+func (e *Engine) SetIPReputation(reputation map[string]int) {
+    e.threatIntel.SetReputation(reputation)
+}
+
 func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) (*model.RequestContext, bool) {
 	// 1. Global Allow-list for system paths
 	if strings.HasSuffix(req.URL, "/health") || strings.HasSuffix(req.URL, "/metrics") || strings.HasSuffix(req.URL, "/favicon.ico") {

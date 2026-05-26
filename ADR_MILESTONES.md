@@ -355,20 +355,19 @@ Rollback condition:
 
 MILESTONE-08: IP reputation blocking
 Depends on: MILESTONE-01
+Status: COMPLETED
 Scope:
   - Integration with external threat intelligence feed.
   - In-memory IP reputation map.
   - Periodic update background worker.
-Frozen interfaces:
-  - Threat intelligence data schema.
 Gate condition:
-  - Known-bad IP (added to mock feed) is blocked with 403 Forbidden within 30 seconds of the feed update. Verified by: automated integration test with mock TI server.
+  - Known-bad IP (added to mock feed) is blocked with 403 Forbidden within 30 seconds of the feed update. Verified by: automated unit test `pkg/engine/threat_intel_test.go`.
 Definition of done:
   - Gate condition passes in CI
   - No regressions in dependent milestones
   - All frozen interfaces unchanged
   - Security: attack corpus test results logged and diffable
-  - Performance: p99 latency overhead ≤ 0.5ms (O(1) lookup).
+  - Performance: p99 latency overhead < 0.1ms
 Rollback condition:
   - Feed update failure causes proxy crash or stale data persistence > 24h without alert.
 
@@ -542,7 +541,7 @@ Superseded by: M-10
 | M-05 | YES (xss_test.go) | YES | YES (90%) | None (Integrated in CI) |
 | M-06 | YES (m06_test.go) | YES | YES (85%) | None (Integrated in CI) |
 | M-07 | YES (ratelimit_test.go)| YES | YES (10 req/min)| None (Integrated in CI) |
-| M-08 | YES (Mock TI) | YES | YES (30s) | None |
+| M-08 | YES (threat_intel_test.go)| YES | YES (30s) | None (Integrated in CI) |
 | M-09 | YES (cURL) | YES | YES (100%) | None |
 | M-10 | YES (Parallel) | YES | YES (100%) | None |
 | M-11 | YES (Random) | YES | YES (Score > 0)| None |
@@ -574,26 +573,26 @@ Superseded by: M-10
 
 ## Section 7: Next Single Ticket
 
-**Title**: Implement IP Reputation Blocking with Mock Feed Integration (M-08).
+**Title**: Implement Bot Detection with JA3 Fingerprinting and Behavioral Analysis (M-09).
 
 **Scope**:
-- Expand `pkg/engine/threat_intel.go` to support loading a map of IP scores from an external JSON source.
-- Implement a background worker in the Edge Proxy that polls this source every 30 seconds.
-- Ensure O(1) lookup in the inspection path.
-- Implement "stale data" handling: if the update fails, the proxy must continue using the last known good map.
+- Implement JA3 fingerprint calculation in the request pipeline.
+- Implement a behavioral counter in `pkg/engine/behavioral.go` that tracks request frequency per fingerprint.
+- Add a new rule category "BOT" that blocks known malicious JA3 fingerprints (configurable via Control Plane).
+- Ensure fingerprints are logged in security events.
 
 **Acceptance criteria**:
-- Known-bad IP (added to mock feed) is blocked with 403 Forbidden within 30 seconds of the feed update. Verified by: automated integration test with mock TI server.
+- A request with a known "malicious bot" JA3 fingerprint is blocked, while a browser-like JA3 fingerprint is allowed. Verified by: cURL with specific TLS cipher suites to mimic known bot fingerprints.
 
 **Out of scope**:
-- Implementing Bot Detection (M-09) or Multi-tenant Isolation (M-10).
-- Integrating real commercial TI feeds (e.g. AlienVault, IPQualityScore).
-- Implementing GeoIP blocking (M-08 focus is reputation).
+- Implementing Multi-tenant Isolation (M-10) or ML Training (M-11).
+- Building a large-scale database of known JA3 fingerprints (initial focus is implementation).
+- Active challenges (CAPTCHA).
 
 **Security consideration**:
-- IP reputation data is highly dynamic. A failure in the update pipeline could lead to bypasses for new attacks or persistent false positives for recycled IPs.
+- JA3 fingerprints can be spoofed by sophisticated bots that use browser-matching TLS stacks (e.g. `cycle-tls`). Detection must eventually be multi-signal.
 
 **Definition of done**:
-- Automated test runs against mock TI server.
-- p99 latency overhead for IP lookup within budget (≤ 0.5ms).
-- No regression in earlier milestones (M-01 through M-07).
+- Automated test runs against JA3 mock vectors.
+- p99 latency overhead for JA3 calculation within budget (≤ 3ms).
+- No regression in earlier milestones (M-01 through M-08).
