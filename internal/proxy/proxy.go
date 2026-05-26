@@ -8,6 +8,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"time"
+    "fmt"
 
 	"github.com/google/uuid"
 	"github.com/sentinel-waf/sentinel-waf/pkg/ebpf"
@@ -25,9 +26,10 @@ type Proxy struct {
 	xdp          *ebpf.XDPManager
 	apiPolicies  []model.APISecurityPolicy
 	mu           sync.RWMutex
+    ratelimiter  *engine.RateLimiter
 }
 
-func NewProxy(targetURL string, e *engine.Engine, cpURL string, xdp *ebpf.XDPManager) (*Proxy, error) {
+func NewProxy(targetURL string, e *engine.Engine, cpURL string, xdp *ebpf.XDPManager, rl *engine.RateLimiter) (*Proxy, error) {
 	target, err := url.Parse(targetURL)
 	if err != nil {
 		return nil, err
@@ -39,6 +41,7 @@ func NewProxy(targetURL string, e *engine.Engine, cpURL string, xdp *ebpf.XDPMan
 		engine:       e,
 		controlPlane: cpURL,
 		xdp:          xdp,
+        ratelimiter:  rl,
 	}
 
 	return p, nil
@@ -53,7 +56,22 @@ var bodyPool = sync.Pool{
 }
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// 1. Capture request context with memory-efficient limit
+	// 1. Rate Limiting Check (M-07)
+	if p.ratelimiter != nil {
+		// Key by RemoteAddr for basic protection.
+		// window/limit could be dynamic, hardcoded to 10/min for M-07 requirement.
+		allowed, err := p.ratelimiter.IsAllowed(r.Context(), r.RemoteAddr, 10, time.Minute)
+		if err != nil {
+			// Log error but allow traffic (Fail Open logic from ADR-005/011)
+			fmt.Printf("Rate limiter error: %v, failing open\n", err)
+		} else if !allowed {
+			w.WriteHeader(http.StatusTooManyRequests)
+			w.Write([]byte("Rate limit exceeded"))
+			return
+		}
+	}
+
+	// 2. Capture request context with memory-efficient limit
 	buf := bodyPool.Get().(*bytes.Buffer)
 	buf.Reset()
 	defer bodyPool.Put(buf)
@@ -79,7 +97,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		StartTime:  time.Now(),
 	}
 
-	// 2. Inspect request
+	// 3. Inspect request
 	_, blocked := p.engine.InspectRequest(context.Background(), reqCtx)
 
 	// API Security Check - Using dynamic policies from control plane
@@ -91,7 +109,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Real-time Anomaly Detection (Phase 2)
 	isAnomaly := p.engine.DetectAnomaly(reqCtx)
 
-	// 3. Report Stats
+	// 4. Report Stats
 	go p.reportStats(p.controlPlane, blocked || apiBlocked, isAnomaly, apiBlocked, reqCtx)
 
 	if blocked || apiBlocked {
@@ -104,6 +122,6 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 4. Forward to target
+	// 5. Forward to target
 	p.proxy.ServeHTTP(w, r)
 }
