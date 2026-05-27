@@ -37,6 +37,9 @@ func (e *Engine) LoadRules(rules []model.Rule) error {
 	defer e.mu.Unlock()
 
 	newRegex := make(map[string]*regexp.Regexp)
+    newGlobalRules := make([]model.Rule, 0)
+    newTenantRules := make(map[uint][]model.Rule)
+
 	for _, rule := range rules {
 		for _, cond := range rule.Conditions {
 			if cond.Operator == "regex" {
@@ -47,9 +50,16 @@ func (e *Engine) LoadRules(rules []model.Rule) error {
 				newRegex[cond.Value] = re
 			}
 		}
+
+        if rule.TenantID == 0 {
+            newGlobalRules = append(newGlobalRules, rule)
+        } else {
+            newTenantRules[rule.TenantID] = append(newTenantRules[rule.TenantID], rule)
+        }
 	}
 
-	e.rules = rules
+	e.rules = newGlobalRules
+    e.tenantRules = newTenantRules
 	e.regex = newRegex
 	return nil
 }
@@ -83,7 +93,6 @@ func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) 
     if e.botDetector.IsBot(req) {
         req.Score += 50
         req.MatchedRules = append(req.MatchedRules, "BOT_DETECTION_POSITIVE")
-        // Check if we should block immediately
         if req.Score > 20 {
             shouldBlock = true
         }
@@ -91,7 +100,6 @@ func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) 
 
 	// ML Anomaly Detection
 	if e.DetectAnomaly(req) {
-		// DetectAnomaly updates score and matched rules
 		if req.Score > 20 {
 			shouldBlock = true
 		}
@@ -110,14 +118,15 @@ func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) 
 		}
 	}
 
-	// Select rules based on tenant ID to ensure isolation
-	targetRules := e.rules
+	// Select rules based on tenant ID to ensure isolation (M-10)
+    // We evaluate BOTH global rules AND tenant-specific rules.
+    // Global rules act as the baseline security policy.
+	targetRules := e.rules // Global rules
 	if req.TenantID != 0 {
-		e.mu.RLock()
 		if tr, ok := e.tenantRules[req.TenantID]; ok && len(tr) > 0 {
-			targetRules = tr
+            // Append tenant rules to global rules for this request
+			targetRules = append(targetRules, tr...)
 		}
-		e.mu.RUnlock()
 	}
 
 	for _, rule := range targetRules {
@@ -157,7 +166,6 @@ func (e *Engine) matchOperator(operator, targetValue, condValue string) bool {
 }
 
 func (e *Engine) evaluateCondition(cond model.Condition, req *model.RequestContext) bool {
-	// Special handling for all headers if Key is empty
 	if cond.Target == "headers" && cond.Key == "" {
 		for _, values := range req.Headers {
 			for _, val := range values {

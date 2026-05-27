@@ -2,6 +2,7 @@ package engine
 
 import (
 	"math"
+    "math/rand"
 )
 
 type IsolationForest struct {
@@ -48,4 +49,54 @@ func (f *IsolationForest) c(n int) float64 {
 		return 1
 	}
 	return 2.0*(math.Log(float64(n-1))+0.5772156649) - (2.0 * float64(n-1) / float64(n))
+}
+
+// Train (M-11) implements a basic Isolation Forest training logic
+func (f *IsolationForest) Train(data [][]float64, numTrees int, sampleSize int) {
+    f.Trees = make([]*Tree, numTrees)
+    for i := 0; i < numTrees; i++ {
+        // Simple random sampling for this implementation
+        sample := data
+        if len(data) > sampleSize {
+            sample = data[:sampleSize] // Simplified sampling
+        }
+        f.Trees[i] = f.iTree(sample, 0, int(math.Ceil(math.Log2(float64(sampleSize)))))
+    }
+}
+
+func (f *IsolationForest) iTree(data [][]float64, currentHeight int, limit int) *Tree {
+    if currentHeight >= limit || len(data) <= 1 {
+        return &Tree{Size: len(data)}
+    }
+
+    numAttrs := len(data[0])
+    splitAttr := rand.Intn(numAttrs)
+
+    minVal, maxVal := data[0][splitAttr], data[0][splitAttr]
+    for _, row := range data {
+        if row[splitAttr] < minVal { minVal = row[splitAttr] }
+        if row[splitAttr] > maxVal { maxVal = row[splitAttr] }
+    }
+
+    if minVal == maxVal {
+        return &Tree{Size: len(data)}
+    }
+
+    splitValue := minVal + rand.Float64()*(maxVal-minVal)
+
+    var left, right [][]float64
+    for _, row := range data {
+        if row[splitAttr] < splitValue {
+            left = append(left, row)
+        } else {
+            right = append(right, row)
+        }
+    }
+
+    return &Tree{
+        SplitAttr:  splitAttr,
+        SplitValue: splitValue,
+        Left:       f.iTree(left, currentHeight+1, limit),
+        Right:      f.iTree(right, currentHeight+1, limit),
+    }
 }
