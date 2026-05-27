@@ -107,6 +107,9 @@ func (e *Engine) flattenXML(data []byte) string {
 				sb.WriteString(" ")
 			}
 		}
+		return sb.String()
+	default:
+		return ""
 	}
 	return strings.ToLower(sb.String())
 }

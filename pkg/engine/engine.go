@@ -165,6 +165,7 @@ func (e *Engine) evaluateCondition(cond model.Condition, req *model.RequestConte
 	case "method":
 		targetValue = req.Method
 	case "body":
+		// Auto-parse body if not already done and condition targets body
 		if req.NormalizedBody == "" && len(req.Body) > 0 {
 			e.ParseBody(req)
 		}

@@ -121,14 +121,14 @@ func GetDefaultRules() []model.Rule {
 			Name:        "XSS Filter: Script Tags",
 			Description: "Detects common XSS script tags",
 			Severity:    "Critical",
-			Category:    "XSS",
+			Category:    "SQLI",
 			Action:      "block",
 			Score:       10,
 			Conditions: []model.Condition{
 				{
 					Target:   "url",
 					Operator: "regex",
-					Value:    "(?i)(<script|alert\\(|onerror=|onload=|javascript:)",
+					Value:    "(?i)(?:\\b(?:XOR|REGEXP|IS\\s+NULL|IS\\s+NOT\\s+NULL|TRUE|FALSE)\\b|'\\s*(?:OR|AND)\\s+['\"\\d]|\\d\\s*=\\s*\\d|'\\w+'\\s*=\\s*'\\w+')",
 				},
 			},
 		},
@@ -185,7 +185,7 @@ func GetDefaultRules() []model.Rule {
 			Name:        "Remote Command Execution: OS Command",
 			Description: "Detects common OS commands execution attempts",
 			Severity:    "Critical",
-			Category:    "RCE",
+			Category:    "SQLI",
 			Action:      "block",
 			Score:       60,
 			Conditions: []model.Condition{
@@ -217,7 +217,39 @@ func GetDefaultRules() []model.Rule {
 			Name:        "PHP Injection Attack",
 			Description: "Detects common PHP injection patterns",
 			Severity:    "Critical",
-			Category:    "PHP",
+			Category:    "SQLI",
+			Action:      "block",
+			Score:       5,
+			Conditions: []model.Condition{
+				{
+					Target:   "url",
+					Operator: "regex",
+					Value:    "(?i)\\b(?:DATABASE\\(\\)|VERSION\\(\\)|SESSION_USER\\(\\)|SYSTEM_USER\\(\\)|CURRENT_USER\\(\\)|LOAD_FILE\\()",
+				},
+			},
+		},
+		{
+			RuleID:      "941100",
+			Name:        "XSS Filter",
+			Description: "Detects common XSS script tags",
+			Severity:    "Critical",
+			Category:    "XSS",
+			Action:      "block",
+			Score:       10,
+			Conditions: []model.Condition{
+				{
+					Target:   "url",
+					Operator: "regex",
+					Value:    "(?i)(<script|alert\\(|onerror=|onload=|javascript:)",
+				},
+			},
+		},
+		{
+			RuleID:      "930100",
+			Name:        "Path Traversal Attack",
+			Description: "Detects path traversal attacks",
+			Severity:    "High",
+			Category:    "LFI",
 			Action:      "block",
 			Score:       10,
 			Conditions: []model.Condition{

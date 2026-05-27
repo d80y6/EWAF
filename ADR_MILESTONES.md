@@ -268,6 +268,7 @@ Depends on: MILESTONE-01
 Scope:
   - Implementation of Rule Engine DSL (Conditions, Operators).
   - Basic block/allow logic.
+  - Basic block/allow decision logic.
   - Local logging of decisions.
 Frozen interfaces:
   - Rule DSL syntax (pkg/model/db.go)
