@@ -17,6 +17,7 @@ type Engine struct {
 	threatIntel *ThreatIntel
 	graphql     *GraphQLAnalyzer
 	forest      *IsolationForest
+    botDetector *BotDetector
 }
 
 func NewEngine() *Engine {
@@ -27,6 +28,7 @@ func NewEngine() *Engine {
 		threatIntel: NewThreatIntel(),
 		graphql:     &GraphQLAnalyzer{MaxDepth: 10, MaxComplexity: 100},
 		forest:      &IsolationForest{Trees: make([]*Tree, 0)},
+        botDetector: NewBotDetector(),
 	}
 }
 
@@ -52,6 +54,10 @@ func (e *Engine) LoadRules(rules []model.Rule) error {
 	return nil
 }
 
+func (e *Engine) SetIPReputation(reputation map[string]int) {
+    e.threatIntel.SetReputation(reputation)
+}
+
 func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) (*model.RequestContext, bool) {
 	// 1. Global Allow-list for system paths
 	if strings.HasSuffix(req.URL, "/health") || strings.HasSuffix(req.URL, "/metrics") || strings.HasSuffix(req.URL, "/favicon.ico") {
@@ -66,12 +72,22 @@ func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) 
 
 	shouldBlock := false
 
-	// Threat Intelligence Check
+	// Threat Intelligence Check (M-08)
 	if e.threatIntel.IsMalicious(req.RemoteAddr) {
 		req.Score += 100
 		req.MatchedRules = append(req.MatchedRules, "THREAT_INTEL_MALICIOUS_IP")
 		return req, true
 	}
+
+    // Bot Detection Check (M-09)
+    if e.botDetector.IsBot(req) {
+        req.Score += 50
+        req.MatchedRules = append(req.MatchedRules, "BOT_DETECTION_POSITIVE")
+        // Check if we should block immediately
+        if req.Score > 20 {
+            shouldBlock = true
+        }
+    }
 
 	// ML Anomaly Detection
 	if e.DetectAnomaly(req) {
@@ -125,7 +141,35 @@ func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) 
 	return req, shouldBlock
 }
 
+func (e *Engine) matchOperator(operator, targetValue, condValue string) bool {
+	switch operator {
+	case "regex":
+		re := e.regex[condValue]
+		if re != nil {
+			return re.MatchString(targetValue)
+		}
+	case "contains":
+		return strings.Contains(targetValue, condValue)
+	case "eq":
+		return targetValue == condValue
+	}
+	return false
+}
+
 func (e *Engine) evaluateCondition(cond model.Condition, req *model.RequestContext) bool {
+	// Special handling for all headers if Key is empty
+	if cond.Target == "headers" && cond.Key == "" {
+		for _, values := range req.Headers {
+			for _, val := range values {
+				res := e.matchOperator(cond.Operator, val, cond.Value)
+				if res {
+					return !cond.Negate
+				}
+			}
+		}
+		return cond.Negate
+	}
+
 	var targetValue string
 	switch cond.Target {
 	case "url":
@@ -134,7 +178,7 @@ func (e *Engine) evaluateCondition(cond model.Condition, req *model.RequestConte
 		targetValue = req.Method
 	case "body":
 		if req.NormalizedBody == "" && len(req.Body) > 0 {
-			req.NormalizedBody = string(req.Body)
+			e.ParseBody(req)
 		}
 		targetValue = req.NormalizedBody
 	case "headers":
@@ -143,21 +187,9 @@ func (e *Engine) evaluateCondition(cond model.Condition, req *model.RequestConte
 		targetValue = req.RemoteAddr
 	}
 
-	result := false
-	switch cond.Operator {
-	case "regex":
-		re := e.regex[cond.Value]
-		if re != nil {
-			result = re.MatchString(targetValue)
-		}
-	case "contains":
-		result = strings.Contains(targetValue, cond.Value)
-	case "eq":
-		result = targetValue == cond.Value
-	}
-
+	res := e.matchOperator(cond.Operator, targetValue, cond.Value)
 	if cond.Negate {
-		return !result
+		return !res
 	}
-	return result
+	return res
 }

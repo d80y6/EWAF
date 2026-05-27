@@ -28,3 +28,9 @@ func (ti *ThreatIntel) UpdateReputation(ip string, score int) {
 	defer ti.mu.Unlock()
 	ti.IPReputation[ip] = score
 }
+
+func (ti *ThreatIntel) SetReputation(reputation map[string]int) {
+	ti.mu.Lock()
+	defer ti.mu.Unlock()
+	ti.IPReputation = reputation
+}

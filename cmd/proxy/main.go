@@ -28,10 +28,18 @@ func main() {
 		cpURL = "http://localhost:8081"
 	}
 
+    redisAddr := os.Getenv("REDIS_ADDR")
+    if redisAddr == "" {
+        redisAddr = "localhost:6379"
+    }
+
 	// Initialize eBPF/XDP (Phase 3)
 	xdpManger := ebpf.NewXDPManager()
 
-	p, err := proxy.NewProxy(targetURL, wafEngine, cpURL, xdpManger)
+    // Initialize Rate Limiter (M-07)
+    ratelimiter := engine.NewRateLimiter(redisAddr)
+
+	p, err := proxy.NewProxy(targetURL, wafEngine, cpURL, xdpManger, ratelimiter)
 	if err != nil {
 		log.Fatalf("Failed to create proxy: %v", err)
 	}

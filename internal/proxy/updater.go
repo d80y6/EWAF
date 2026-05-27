@@ -18,11 +18,13 @@ func (p *Proxy) StartRuleUpdater(controlPlaneURL string) {
 		for range ticker.C {
 			p.updateRules(controlPlaneURL)
 			p.updateAPIPolicies(controlPlaneURL)
+            p.updateIPReputation(controlPlaneURL)
 		}
 	}()
 	// Initial update
 	p.updateRules(controlPlaneURL)
 	p.updateAPIPolicies(controlPlaneURL)
+    p.updateIPReputation(controlPlaneURL)
 }
 
 func (p *Proxy) updateRules(url string) {
@@ -86,4 +88,23 @@ func (p *Proxy) updateAPIPolicies(url string) {
 	p.apiPolicies = policies
 	p.mu.Unlock()
 	log.Printf("Successfully updated %d API policies from control plane", len(policies))
+}
+
+func (p *Proxy) updateIPReputation(url string) {
+    // M-08: Polling from Control Plane which acts as an aggregator/mock feed
+	resp, err := http.Get(url + "/api/reputation")
+	if err != nil {
+		log.Printf("Failed to fetch IP reputation from control plane: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	var reputation map[string]int
+	if err := json.NewDecoder(resp.Body).Decode(&reputation); err != nil {
+		log.Printf("Failed to decode IP reputation: %v", err)
+		return
+	}
+
+	p.engine.SetIPReputation(reputation)
+	log.Printf("Successfully updated %d IP reputation entries from control plane", len(reputation))
 }
