@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 	"regexp"
+    "io"
 
 	"github.com/sentinel-waf/sentinel-waf/pkg/model"
 	"golang.org/x/text/unicode/norm"
@@ -52,17 +53,11 @@ func (e *Engine) ParseBody(req *model.RequestContext) {
 	if strings.Contains(contentType, "application/json") {
 		var data interface{}
 		if err := json.Unmarshal(req.Body, &data); err == nil {
-			// recursively stringify all values for inspection
 			req.NormalizedBody = e.flattenJSON(data)
 		}
-	} else if strings.Contains(contentType, "application/xml") {
-		var data interface{}
-		if err := xml.Unmarshal(req.Body, &data); err == nil {
-			cleaned, _ := json.Marshal(data)
-			req.NormalizedBody = strings.ToLower(string(cleaned))
-		}
+	} else if strings.Contains(contentType, "application/xml") || strings.Contains(contentType, "text/xml") {
+		req.NormalizedBody = e.flattenXML(req.Body)
 	} else {
-		// Default normalization for other bodies
 		req.NormalizedBody = strings.ToLower(string(req.Body))
 	}
 }
@@ -88,4 +83,33 @@ func (e *Engine) flattenJSON(data interface{}) string {
 	default:
 		return ""
 	}
+}
+
+func (e *Engine) flattenXML(data []byte) string {
+	var sb strings.Builder
+	decoder := xml.NewDecoder(strings.NewReader(string(data)))
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return strings.ToLower(string(data)) // Fallback to raw string
+		}
+
+		switch t := token.(type) {
+		case xml.CharData:
+			sb.WriteString(string(t))
+			sb.WriteString(" ")
+		case xml.StartElement:
+			for _, attr := range t.Attr {
+				sb.WriteString(attr.Value)
+				sb.WriteString(" ")
+			}
+		}
+		return sb.String()
+	default:
+		return ""
+	}
+	return strings.ToLower(sb.String())
 }

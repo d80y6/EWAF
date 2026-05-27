@@ -52,6 +52,10 @@ func (e *Engine) LoadRules(rules []model.Rule) error {
 	return nil
 }
 
+func (e *Engine) SetIPReputation(reputation map[string]int) {
+    e.threatIntel.SetReputation(reputation)
+}
+
 func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) (*model.RequestContext, bool) {
 	// 1. Global Allow-list for system paths
 	if strings.HasSuffix(req.URL, "/health") || strings.HasSuffix(req.URL, "/metrics") || strings.HasSuffix(req.URL, "/favicon.ico") {
@@ -125,7 +129,35 @@ func (e *Engine) InspectRequest(ctx context.Context, req *model.RequestContext) 
 	return req, shouldBlock
 }
 
+func (e *Engine) matchOperator(operator, targetValue, condValue string) bool {
+	switch operator {
+	case "regex":
+		re := e.regex[condValue]
+		if re != nil {
+			return re.MatchString(targetValue)
+		}
+	case "contains":
+		return strings.Contains(targetValue, condValue)
+	case "eq":
+		return targetValue == condValue
+	}
+	return false
+}
+
 func (e *Engine) evaluateCondition(cond model.Condition, req *model.RequestContext) bool {
+	// Special handling for all headers if Key is empty
+	if cond.Target == "headers" && cond.Key == "" {
+		for _, values := range req.Headers {
+			for _, val := range values {
+				res := e.matchOperator(cond.Operator, val, cond.Value)
+				if res {
+					return !cond.Negate
+				}
+			}
+		}
+		return cond.Negate
+	}
+
 	var targetValue string
 	switch cond.Target {
 	case "url":
@@ -144,21 +176,9 @@ func (e *Engine) evaluateCondition(cond model.Condition, req *model.RequestConte
 		targetValue = req.RemoteAddr
 	}
 
-	result := false
-	switch cond.Operator {
-	case "regex":
-		re := e.regex[cond.Value]
-		if re != nil {
-			result = re.MatchString(targetValue)
-		}
-	case "contains":
-		result = strings.Contains(targetValue, cond.Value)
-	case "eq":
-		result = targetValue == cond.Value
-	}
-
+	res := e.matchOperator(cond.Operator, targetValue, cond.Value)
 	if cond.Negate {
-		return !result
+		return !res
 	}
-	return result
+	return res
 }

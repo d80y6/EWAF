@@ -124,3 +124,51 @@ func TestEngine_SQLICRS(t *testing.T) {
 		})
 	}
 }
+
+func TestEngine_SQLI_Headers(t *testing.T) {
+	e := NewEngine()
+	e.LoadRules(rules.GetDefaultRules())
+
+	tests := []struct {
+		name        string
+		req         *model.RequestContext
+		shouldBlock bool
+	}{
+		{
+			name: "SQLi in User-Agent",
+			req: &model.RequestContext{
+				URL:     "/",
+				Method:  "GET",
+				Headers: http.Header{"User-Agent": []string{"' UNION SELECT 1,2,3--"}},
+			},
+			shouldBlock: true,
+		},
+		{
+			name: "SQLi in Cookie",
+			req: &model.RequestContext{
+				URL:     "/",
+				Method:  "GET",
+				Headers: http.Header{"Cookie": []string{"sessionid=1' OR '1'='1"}},
+			},
+			shouldBlock: true,
+		},
+		{
+			name: "Safe headers",
+			req: &model.RequestContext{
+				URL:     "/",
+				Method:  "GET",
+				Headers: http.Header{"User-Agent": []string{"Mozilla/5.0"}, "X-Request-ID": []string{"abc-123"}},
+			},
+			shouldBlock: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, blocked := e.InspectRequest(context.Background(), tt.req)
+			if blocked != tt.shouldBlock {
+				t.Errorf("Engine.InspectRequest(%s) blocked = %v, want %v", tt.name, blocked, tt.shouldBlock)
+			}
+		})
+	}
+}

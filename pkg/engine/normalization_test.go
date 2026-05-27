@@ -2,6 +2,7 @@ package engine
 
 import (
 	"testing"
+    "net/http"
 	"github.com/sentinel-waf/sentinel-waf/pkg/model"
 )
 
@@ -41,6 +42,35 @@ func TestEngine_Normalization(t *testing.T) {
 			e.NormalizeRequest(req)
 			if req.NormalizedURL != tt.expected {
 				t.Errorf("NormalizeRequest() = %v, want %v", req.NormalizedURL, tt.expected)
+			}
+		})
+	}
+}
+
+func TestEngine_XMLNormalization(t *testing.T) {
+	e := NewEngine()
+
+	tests := []struct {
+		name     string
+		body     string
+		expected string
+	}{
+		{
+			name:     "Flatten XML attributes and text",
+			body:     `<user id="1' or '1'='1">admin</user>`,
+			expected: "1' or '1'='1 admin ",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := &model.RequestContext{
+				Body:    []byte(tt.body),
+				Headers: http.Header{"Content-Type": []string{"application/xml"}},
+			}
+			e.ParseBody(req)
+			if req.NormalizedBody != tt.expected {
+				t.Errorf("ParseBody() = %q, want %q", req.NormalizedBody, tt.expected)
 			}
 		})
 	}

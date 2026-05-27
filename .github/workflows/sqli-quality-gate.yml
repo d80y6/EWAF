@@ -6,6 +6,9 @@ on:
   pull_request:
     
 
+permissions:
+  contents: read
+
 jobs:
   sqli-tests:
     runs-on: ubuntu-latest
@@ -22,3 +25,11 @@ jobs:
 
     - name: Benchmark Performance
       run: go test -bench=. ./pkg/engine/...
+
+    - name: Run GoTestWAF (Docker)
+      # This step might fail in standard GitHub hosted runners without Docker-in-Docker setup
+      # but it provides the correct integration pattern for a production WAF.
+      continue-on-error: true
+      run: |
+        mkdir -p reports
+        ./scripts/gotestwaf/run.sh
